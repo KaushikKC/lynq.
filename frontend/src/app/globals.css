@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Stack+Sans+Notch:wght@200..700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0C0C0C;
+  --primary-bg: #0C0C0C;
+  --secondary-bg: #FFFFFF;
+  --accent-yellow: #FFD93D;
+  --hover-yellow: #FFC700;
+  --muted-gray: #8E8E8E;
+  --border-gray: #EDEDED;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-urbanist);
+  --font-heading: 'Stack Sans Notch', sans-serif;
+  --font-family-heading: 'Stack Sans Notch', sans-serif;
+}
+
+.font-heading {
+  font-family: 'Stack Sans Notch', sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-urbanist), sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Stack Sans Notch', sans-serif;
+  font-weight: 700;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
