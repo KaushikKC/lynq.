@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { userController } from '../controllers/userController';
 import { loanController } from '../controllers/loanController';
-// import { screeningController } from '../controllers/screeningController';
+import { screeningController } from '../controllers/screeningController';
 import { treasuryController } from '../controllers/treasuryController';
-// import { historyController } from '../controllers/historyController';
-// import * as agentController from '../controllers/agentController';
+import { historyController } from '../controllers/historyController';
+import * as agentController from '../controllers/agentController';
 
 const router = Router();
 
@@ -22,7 +22,7 @@ router.post('/user/:address/verification', userController.saveVerification.bind(
 router.get('/user/:address/verification', userController.getVerification.bind(userController));
 
 // Agent operations (special role-required operations)
-// router.post('/agent/mint-sbt', agentController.mintSBTViaAgent);
+router.post('/agent/mint-sbt', agentController.mintSBTViaAgent);
 
 // Loan routes
 router.post('/loan/request', loanController.requestLoan.bind(loanController));
@@ -35,14 +35,14 @@ router.put('/loan/:loanId/default', loanController.markAsDefaulted.bind(loanCont
 router.get('/loan/pending', loanController.getPendingLoans.bind(loanController));
 
 // Screening routes
-// router.get(
-//   '/screening/eligibility',
-//   screeningController.checkEligibility.bind(screeningController)
-// );
-// router.get(
-//   '/screening/recommended-amount',
-//   screeningController.getRecommendedAmount.bind(screeningController)
-// );
+router.get(
+  '/screening/eligibility',
+  screeningController.checkEligibility.bind(screeningController)
+);
+router.get(
+  '/screening/recommended-amount',
+  screeningController.getRecommendedAmount.bind(screeningController)
+);
 
 // Treasury routes
 router.get('/treasury/metrics', treasuryController.getMetrics.bind(treasuryController));
@@ -51,8 +51,8 @@ router.post('/treasury/withdrawal', treasuryController.recordWithdrawal.bind(tre
 router.post('/treasury/repayment', treasuryController.recordRepayment.bind(treasuryController));
 
 // History routes
-// router.get('/history', historyController.getHistory.bind(historyController));
-// router.post('/history/event', historyController.recordEvent.bind(historyController));
-// router.get('/history/stats', historyController.getStats.bind(historyController));
+router.get('/history', historyController.getHistory.bind(historyController));
+router.post('/history/event', historyController.recordEvent.bind(historyController));
+router.get('/history/stats', historyController.getStats.bind(historyController));
 
 export default router;
