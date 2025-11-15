@@ -6,6 +6,10 @@ import { CONTRACTS } from "@/config/contracts";
 import VerificationSBTABI from "@/lib/abis/VerificationSBT.json";
 import { createWalletClient, custom, defineChain } from "viem";
 
+// Get RPC URL from environment variable (defaults to public Arc Testnet)
+const RPC_URL =
+  process.env.NEXT_PUBLIC_ARC_RPC_URL || "https://rpc.testnet.arc.network";
+
 // Define Arc Testnet chain
 const arcTestnet = defineChain({
   id: 5042002,
@@ -16,8 +20,8 @@ const arcTestnet = defineChain({
     symbol: "ETH",
   },
   rpcUrls: {
-    default: { http: ["https://rpc.testnet.arc.network"] },
-    public: { http: ["https://rpc.testnet.arc.network"] },
+    default: { http: [RPC_URL] },
+    public: { http: [RPC_URL] },
   },
   blockExplorers: {
     default: { name: "Arcscan", url: "https://testnet.arcscan.app" },
@@ -168,7 +172,7 @@ export function useVerification() {
                   chainId: `0x${arcTestnet.id.toString(16)}`,
                   chainName: arcTestnet.name,
                   nativeCurrency: arcTestnet.nativeCurrency,
-                  rpcUrls: [arcTestnet.rpcUrls.default.http[0]],
+                  rpcUrls: [RPC_URL],
                   blockExplorerUrls: [arcTestnet.blockExplorers.default.url],
                 },
               ],

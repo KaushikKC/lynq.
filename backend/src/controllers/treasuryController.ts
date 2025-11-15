@@ -4,6 +4,9 @@ import Treasury from '../models/Treasury';
 import Loan, { LoanStatus } from '../models/Loan';
 import User from '../models/User';
 import { logger } from '../utils/logger';
+import { rateLimiter } from '../utils/rateLimiter';
+import { cache } from '../utils/cache';
+import { rpcProviderManager } from '../utils/rpcProvider';
 
 const TREASURY_POOL_ABI = [
   'function createAllocation(string name, uint256 percentage, address destination) external returns (uint256)',
@@ -20,7 +23,7 @@ const TREASURY_POOL_ABI = [
 ];
 
 export class TreasuryController {
-  // Helper to add delay between RPC calls
+  // Helper to add delay between RPC calls (kept for backward compatibility)
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -294,9 +297,8 @@ export class TreasuryController {
         return;
       }
 
-      const provider = new ethers.JsonRpcProvider(
-        process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
-      );
+      // Use RPC provider manager with fallback
+      const provider = await rpcProviderManager.executeWithFallback(async p => p);
       const agentWallet = new ethers.Wallet(process.env.AGENT_PRIVATE_KEY!, provider);
       const treasuryPool = new ethers.Contract(
         process.env.TREASURY_POOL_ADDRESS!,
@@ -309,8 +311,16 @@ export class TreasuryController {
       // Convert percentage to basis points (e.g., 70% = 7000)
       const percentageBP = Math.floor(percentage * 100);
 
-      const tx = await treasuryPool.createAllocation(name, percentageBP, destination);
-      const receipt = await tx.wait();
+      // Use rate limiter for transactions
+      const tx = await rateLimiter.execute(() =>
+        treasuryPool.createAllocation(name, percentageBP, destination)
+      );
+      const receipt = (await rateLimiter.execute(() =>
+        tx.wait()
+      )) as ethers.ContractTransactionReceipt;
+
+      // Clear cache after creation
+      cache.delete('treasury:allocations');
 
       logger.info('Allocation created', { txHash: receipt.hash });
 
@@ -335,9 +345,8 @@ export class TreasuryController {
   // POST /api/treasury/execute-allocations - Execute all allocations
   async executeAllocations(_req: Request, res: Response): Promise<void> {
     try {
-      const provider = new ethers.JsonRpcProvider(
-        process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
-      );
+      // Use RPC provider manager with fallback
+      const provider = await rpcProviderManager.executeWithFallback(async p => p);
       const agentWallet = new ethers.Wallet(process.env.AGENT_PRIVATE_KEY!, provider);
       const treasuryPool = new ethers.Contract(
         process.env.TREASURY_POOL_ADDRESS!,
@@ -347,14 +356,26 @@ export class TreasuryController {
 
       logger.info('Executing allocations');
 
-      const tx = await treasuryPool.executeAllocations();
-      const receipt = await tx.wait();
+      // Use rate limiter and RPC provider manager
+      const tx = await rateLimiter.execute(() => treasuryPool.executeAllocations());
+      const receipt = (await rateLimiter.execute(() =>
+        tx.wait()
+      )) as ethers.ContractTransactionReceipt;
+
+      // Clear cache after execution
+      cache.delete('treasury:allocations');
 
       logger.info('Allocations executed', { txHash: receipt.hash });
+
+      // Add a delay before returning to allow transaction to be mined
+      // This helps prevent frontend from immediately calling getAllocations
+      await this.delay(500);
 
       res.json({
         success: true,
         txHash: receipt.hash,
+        message:
+          'Allocations executed successfully. Funds have been transferred to destination addresses.',
       });
     } catch (error: any) {
       logger.error('Error executing allocations:', error);
@@ -386,9 +407,8 @@ export class TreasuryController {
         return;
       }
 
-      const provider = new ethers.JsonRpcProvider(
-        process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
-      );
+      // Use RPC provider manager with fallback
+      const provider = await rpcProviderManager.executeWithFallback(async p => p);
       const agentWallet = new ethers.Wallet(process.env.AGENT_PRIVATE_KEY!, provider);
       const treasuryPool = new ethers.Contract(
         process.env.TREASURY_POOL_ADDRESS!,
@@ -401,8 +421,16 @@ export class TreasuryController {
       // Convert amounts to wei (assuming USDC with 6 decimals)
       const amountsWei = amounts.map((a: number) => ethers.parseUnits(a.toString(), 6));
 
-      const tx = await treasuryPool.scheduleDistribution(recipients, amountsWei, frequency);
-      const receipt = await tx.wait();
+      // Use rate limiter for transactions
+      const tx = await rateLimiter.execute(() =>
+        treasuryPool.scheduleDistribution(recipients, amountsWei, frequency)
+      );
+      const receipt = (await rateLimiter.execute(() =>
+        tx.wait()
+      )) as ethers.ContractTransactionReceipt;
+
+      // Clear cache after scheduling
+      cache.delete('treasury:distributions');
 
       logger.info('Distribution scheduled', { txHash: receipt.hash });
 
@@ -427,9 +455,8 @@ export class TreasuryController {
   // POST /api/treasury/execute-distributions - Execute due distributions
   async executeDistributions(_req: Request, res: Response): Promise<void> {
     try {
-      const provider = new ethers.JsonRpcProvider(
-        process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
-      );
+      // Use RPC provider manager with fallback
+      const provider = await rpcProviderManager.executeWithFallback(async p => p);
       const agentWallet = new ethers.Wallet(process.env.AGENT_PRIVATE_KEY!, provider);
       const treasuryPool = new ethers.Contract(
         process.env.TREASURY_POOL_ADDRESS!,
@@ -439,8 +466,14 @@ export class TreasuryController {
 
       logger.info('Executing distributions');
 
-      const tx = await treasuryPool.executeDistributions();
-      const receipt = await tx.wait();
+      // Use rate limiter for transactions
+      const tx = await rateLimiter.execute(() => treasuryPool.executeDistributions());
+      const receipt = (await rateLimiter.execute(() =>
+        tx.wait()
+      )) as ethers.ContractTransactionReceipt;
+
+      // Clear cache after execution
+      cache.delete('treasury:distributions');
 
       logger.info('Distributions executed', { txHash: receipt.hash });
 
@@ -460,37 +493,53 @@ export class TreasuryController {
   // GET /api/treasury/allocations - Get all allocations
   async getAllocations(_req: Request, res: Response): Promise<void> {
     try {
-      const provider = new ethers.JsonRpcProvider(
-        process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
-      );
+      // Check cache first
+      const cacheKey = 'treasury:allocations';
+      const cached = cache.get<any>(cacheKey);
+      if (cached) {
+        logger.info('Returning cached allocations');
+        res.json(cached);
+        return;
+      }
+
+      // Use RPC provider manager with fallback
+      const provider = await rpcProviderManager.executeWithFallback(async p => p);
       const treasuryPool = new ethers.Contract(
         process.env.TREASURY_POOL_ADDRESS!,
         TREASURY_POOL_ABI,
         provider
       );
 
-      const count = await treasuryPool.allocationCount();
+      // Use rate limiter for RPC calls
+      const count = await rateLimiter.execute(() => treasuryPool.allocationCount());
       const allocations = [];
 
       for (let i = 1; i <= count; i++) {
-        const alloc = await treasuryPool.getAllocation(i);
-        allocations.push({
-          id: i,
-          name: alloc.name,
-          percentage: Number(alloc.percentage) / 100, // Convert from basis points
-          destination: alloc.destination,
-          allocated: Number(ethers.formatUnits(alloc.allocated, 6)),
-          spent: Number(ethers.formatUnits(alloc.spent, 6)),
-          active: alloc.active,
-        });
-        // Add small delay to avoid rate limiting
-        if (i < count) await this.delay(100);
+        try {
+          const alloc = await rateLimiter.execute(() => treasuryPool.getAllocation(i));
+          allocations.push({
+            id: i,
+            name: alloc.name,
+            percentage: Number(alloc.percentage) / 100, // Convert from basis points
+            destination: alloc.destination,
+            allocated: Number(ethers.formatUnits(alloc.allocated, 6)),
+            spent: Number(ethers.formatUnits(alloc.spent, 6)),
+            active: alloc.active,
+          });
+        } catch (error) {
+          logger.warn(`Failed to get allocation ${i}`, error);
+        }
       }
 
-      res.json({
+      const response = {
         success: true,
         data: allocations,
-      });
+      };
+
+      // Cache for 20 seconds
+      cache.set(cacheKey, response, 20000);
+
+      res.json(response);
     } catch (error: any) {
       logger.error('Error getting allocations:', error);
       res.status(500).json({
@@ -503,41 +552,57 @@ export class TreasuryController {
   // GET /api/treasury/distributions - Get all distributions
   async getDistributions(_req: Request, res: Response): Promise<void> {
     try {
-      const provider = new ethers.JsonRpcProvider(
-        process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
-      );
+      // Check cache first
+      const cacheKey = 'treasury:distributions';
+      const cached = cache.get<any>(cacheKey);
+      if (cached) {
+        logger.info('Returning cached distributions');
+        res.json(cached);
+        return;
+      }
+
+      // Use RPC provider manager with fallback
+      const provider = await rpcProviderManager.executeWithFallback(async p => p);
       const treasuryPool = new ethers.Contract(
         process.env.TREASURY_POOL_ADDRESS!,
         TREASURY_POOL_ABI,
         provider
       );
 
-      const count = await treasuryPool.distributionCount();
+      // Use rate limiter for RPC calls
+      const count = await rateLimiter.execute(() => treasuryPool.distributionCount());
       const distributions = [];
 
       for (let i = 1; i <= count; i++) {
-        const dist = await treasuryPool.getDistribution(i);
-        const now = Math.floor(Date.now() / 1000);
-        const nextDue = Number(dist.lastExecuted) + Number(dist.frequency);
+        try {
+          const dist = await rateLimiter.execute(() => treasuryPool.getDistribution(i));
+          const now = Math.floor(Date.now() / 1000);
+          const nextDue = Number(dist.lastExecuted) + Number(dist.frequency);
 
-        distributions.push({
-          id: i,
-          recipients: dist.recipients,
-          amounts: dist.amounts.map((a: bigint) => Number(ethers.formatUnits(a, 6))),
-          frequency: Number(dist.frequency),
-          lastExecuted: Number(dist.lastExecuted),
-          nextDue: nextDue,
-          daysUntilNext: Math.floor((nextDue - now) / (24 * 60 * 60)),
-          active: dist.active,
-        });
-        // Add small delay to avoid rate limiting
-        if (i < count) await this.delay(100);
+          distributions.push({
+            id: i,
+            recipients: dist.recipients,
+            amounts: dist.amounts.map((a: bigint) => Number(ethers.formatUnits(a, 6))),
+            frequency: Number(dist.frequency),
+            lastExecuted: Number(dist.lastExecuted),
+            nextDue: nextDue,
+            daysUntilNext: Math.floor((nextDue - now) / (24 * 60 * 60)),
+            active: dist.active,
+          });
+        } catch (error) {
+          logger.warn(`Failed to get distribution ${i}`, error);
+        }
       }
 
-      res.json({
+      const response = {
         success: true,
         data: distributions,
-      });
+      };
+
+      // Cache for 20 seconds
+      cache.set(cacheKey, response, 20000);
+
+      res.json(response);
     } catch (error: any) {
       logger.error('Error getting distributions:', error);
       res.status(500).json({

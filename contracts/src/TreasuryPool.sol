@@ -328,19 +328,47 @@ contract TreasuryPool is ReentrancyGuard {
     
     /**
      * @notice Execute allocations based on current treasury balance
+     * @dev Transfers funds from treasury to destination addresses based on percentages
      */
     function executeAllocations() external onlyTreasuryAgent nonReentrant {
-        uint256 availableFunds = totalLiquidity - totalUtilized;
+        // Calculate available funds based on tracked liquidity
+        uint256 trackedAvailable = totalLiquidity - totalUtilized;
+        require(trackedAvailable > 0, "TreasuryPool: No available funds to allocate");
+        
+        // Get actual contract balance to ensure we don't transfer more than available
+        uint256 contractBalance = usdc.balanceOf(address(this));
+        
+        uint256 totalAllocated = 0;
         
         for (uint256 i = 1; i <= allocationCount; i++) {
             Allocation storage alloc = allocations[i];
             if (!alloc.active) continue;
             
-            uint256 allocAmount = (availableFunds * alloc.percentage) / BASIS_POINTS;
+            // Calculate allocation based on tracked available funds
+            uint256 allocAmount = (trackedAvailable * alloc.percentage) / BASIS_POINTS;
+            if (allocAmount == 0) continue;
+            
+            // Ensure we don't transfer more than contract actually has
+            uint256 remainingContractBalance = contractBalance - totalAllocated;
+            if (allocAmount > remainingContractBalance) {
+                // Adjust to available balance if contract has less than tracked
+                allocAmount = remainingContractBalance;
+                if (allocAmount == 0) break;
+            }
+            
+            // Actually transfer funds to destination
+            usdc.safeTransfer(alloc.destination, allocAmount);
+            
+            // Update tracking
             alloc.allocated += allocAmount;
+            alloc.spent += allocAmount;
+            totalAllocated += allocAmount;
             
             emit FundsAllocated(i, allocAmount);
         }
+        
+        // Update total utilized to reflect allocated funds
+        totalUtilized += totalAllocated;
     }
     
     /**

@@ -15,6 +15,10 @@ const MULTI_CURRENCY_ABI = [
 ];
 
 export class MultiCurrencyController {
+  // Helper to add delay between RPC calls
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
   // POST /api/currency/add - Add supported currency
   async addCurrency(req: Request, res: Response): Promise<void> {
     try {
@@ -185,10 +189,10 @@ export class MultiCurrencyController {
       ];
 
       const currencies = [];
+      const validTokens = tokens.filter(t => t.address !== '0x0');
 
-      for (const token of tokens) {
-        if (token.address === '0x0') continue;
-
+      for (let i = 0; i < validTokens.length; i++) {
+        const token = validTokens[i];
         try {
           const result = await multiCurrency.getTokenDetails(token.address);
           // Result is an array: [symbol, rate, supported]
@@ -205,8 +209,17 @@ export class MultiCurrencyController {
               rateDisplay: `1 ${symbol} = ${(Number(rate) / 10000).toFixed(4)} USDC`,
             });
           }
+
+          // Add delay between calls to avoid rate limiting (200ms = max 5 calls/second)
+          if (i < validTokens.length - 1) {
+            await this.delay(200);
+          }
         } catch (error) {
           logger.warn(`Failed to get details for token ${token.address}`, error);
+          // Still add delay even on error to respect rate limits
+          if (i < validTokens.length - 1) {
+            await this.delay(200);
+          }
         }
       }
 

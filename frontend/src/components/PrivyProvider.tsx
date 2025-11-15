@@ -6,6 +6,24 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http } from "viem";
 import { createConfig } from "wagmi";
 
+// Get RPC URL from environment variable (defaults to public Arc Testnet)
+const RPC_URL =
+  process.env.NEXT_PUBLIC_ARC_RPC_URL || "https://rpc.testnet.arc.network";
+
+// Debug: Log which RPC is being used (client-side too)
+if (typeof window !== "undefined") {
+  // Client-side logging
+  console.log("🔗 Frontend RPC URL:", RPC_URL);
+  console.log(
+    "🔗 Env variable value:",
+    process.env.NEXT_PUBLIC_ARC_RPC_URL || "NOT SET"
+  );
+  console.log(
+    "🔗 Full RPC URL (masked):",
+    RPC_URL.replace(/\/v2\/[^/]+/, "/v2/***")
+  );
+}
+
 // Configure Arc Testnet with Chain ID 5042002
 const customChain = {
   id: 5042002,
@@ -17,7 +35,7 @@ const customChain = {
   },
   rpcUrls: {
     default: {
-      http: ["https://rpc.testnet.arc.network"],
+      http: [RPC_URL],
     },
   },
   blockExplorers: {
@@ -29,17 +47,21 @@ const customChain = {
   testnet: true,
 } as const;
 
-// Create wagmi config
+// Create wagmi config with custom RPC URL
 const wagmiConfig = createConfig({
   chains: [customChain],
   transports: {
-    [customChain.id]: http(),
+    [customChain.id]: http(RPC_URL),
   },
 });
 
 const queryClient = new QueryClient();
 
-export default function PrivyProvider({ children }: { children: React.ReactNode }) {
+export default function PrivyProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <PrivyProviderBase
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
@@ -65,4 +87,3 @@ export default function PrivyProvider({ children }: { children: React.ReactNode 
     </PrivyProviderBase>
   );
 }
-

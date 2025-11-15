@@ -2,21 +2,25 @@
 export const CONTRACTS = {
   VerificationSBT: "0x290d0662a9d7fb13a7470b68900fEFEC895cC6Ae",
   AgentController: "0x92CB8A9a5a73bAbAB4d7AB05cB9c49B862F60cbB",
-  TreasuryPool: "0xBa8B99fcBF8FF2861D01d22E4C604b164887E259",
-  LoanEngine: "0x02D3aD867FFc93C424804563a4ed186eF2c433bd",
+  TreasuryPool: "0xe72d3Ba61852302670139648ee70E193c49085B2",
+  LoanEngine: "0x660D0bf91fCDd5dD4172c3e3D368198B277Ca679",
   TestUSDC: "0x3600000000000000000000000000000000000000",
   TestEURC: "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a", // Euro Coin for testing
   TestUSYC: "0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C", // Add your deployed USYC address here
-  MultiCurrencyManager: "0x77F8B6dAe75Cf9CBC0c426567340DA4a5b67Af3b",
-  GatewayManager: "0x2f98a71ebe762e9a30db9d845d1f8B6af267E2FB",
+  MultiCurrencyManager: "0x3049EB4d4FdAf0B1b4e565e3C790535039256CC7",
+  GatewayManager: "0x4b92aD7fb2f98dF94E66C947005ee10142BB9b36",
 } as const;
 
 // Arc Testnet Configuration (matching your Privy setup)
+// Get RPC URL from environment variable (defaults to public Arc Testnet)
+const RPC_URL =
+  process.env.NEXT_PUBLIC_ARC_RPC_URL || "https://rpc.testnet.arc.network";
+
 export const NETWORK_CONFIG = {
   chainId: 5042002, // Arc Testnet Chain ID
   chainIdHex: "0x4CB2F2",
   chainName: "Arc Testnet",
-  rpcUrls: ["https://rpc.testnet.arc.network"],
+  rpcUrls: [RPC_URL],
   blockExplorerUrls: ["https://testnet.arcscan.app"],
   nativeCurrency: {
     name: "USDC",

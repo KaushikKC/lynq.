@@ -6,6 +6,7 @@ import { usePublicClient, useWalletClient } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { CONTRACTS } from "@/config/contracts";
 import LoanEngineABI from "@/lib/abis/LoanEngine.json";
+import { withRetry } from "@/lib/utils/rpcRetry";
 
 export function useLoan() {
   const { wallets } = useWallets();
@@ -62,7 +63,14 @@ export function useLoan() {
 
       // Better error message
       if (error instanceof Error) {
-        if (error.message.includes("reverted")) {
+        if (
+          error.message.includes("rate limit") ||
+          error.message.includes("exceeds defined limit")
+        ) {
+          throw new Error(
+            "RPC rate limit exceeded. Please wait a few seconds and try again. If this persists, check your RPC provider configuration."
+          );
+        } else if (error.message.includes("reverted")) {
           throw new Error(
             "Transaction was rejected by the contract. Please check if you have completed verification and meet eligibility criteria."
           );
@@ -103,6 +111,45 @@ export function useLoan() {
       return { hash, receipt, success: receipt.status === "success" };
     } catch (error) {
       console.error("Error repaying loan:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Repay a loan with any supported token (multi-currency)
+   * @param loanId ID of the loan
+   * @param tokenAddress Token address (USDC, EURC, USYC)
+   * @param amount Amount in the token's native decimals
+   */
+  const repayLoanWithToken = async (
+    loanId: number,
+    tokenAddress: string,
+    amount: string
+  ) => {
+    if (!walletClient || !publicClient) {
+      throw new Error("Wallet not connected");
+    }
+
+    setIsLoading(true);
+    try {
+      // Get token decimals (assuming 6 for stablecoins, but should query)
+      const decimals = 6; // USDC, EURC, USYC all use 6 decimals
+      const amountInWei = parseUnits(amount, decimals);
+
+      const hash = await walletClient.writeContract({
+        address: CONTRACTS.LoanEngine as `0x${string}`,
+        abi: LoanEngineABI,
+        functionName: "repayLoanWithToken",
+        args: [BigInt(loanId), tokenAddress as `0x${string}`, amountInWei],
+      });
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+      return { hash, receipt, success: receipt.status === "success" };
+    } catch (error) {
+      console.error("Error repaying loan with token:", error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -234,9 +281,148 @@ export function useLoan() {
     }
   };
 
+  /**
+   * Auto-repay loan if credit score improves (programmable logic)
+   * @param loanId ID of the loan
+   */
+  const autoRepayOnCreditImprovement = async (loanId: number) => {
+    if (!walletClient || !publicClient) {
+      throw new Error("Wallet not connected");
+    }
+
+    setIsLoading(true);
+    try {
+      const hash = await walletClient.writeContract({
+        address: CONTRACTS.LoanEngine as `0x${string}`,
+        abi: LoanEngineABI,
+        functionName: "autoRepayOnCreditImprovement",
+        args: [BigInt(loanId)],
+      });
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+      return { hash, receipt, success: receipt.status === "success" };
+    } catch (error) {
+      console.error("Error auto-repaying loan:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Auto-extend loan if 50% paid early (programmable logic)
+   * @param loanId ID of the loan
+   */
+  const autoExtendOnPartialPayment = async (loanId: number) => {
+    if (!walletClient || !publicClient) {
+      throw new Error("Wallet not connected");
+    }
+
+    setIsLoading(true);
+    try {
+      // First, check loan status to provide better error messages
+      const loan = (await getLoan(loanId)) as any;
+      if (!loan || (loan as any).status !== 2) {
+        // 2 = Disbursed
+        throw new Error("Loan must be active (disbursed) to extend");
+      }
+
+      // Check if at least 50% is repaid
+      const totalOwed = await getTotalOwed(loanId);
+      const remaining = await getRemainingBalance(loanId);
+      const repaid = parseFloat(totalOwed) - parseFloat(remaining);
+      const halfAmount = parseFloat(totalOwed) / 2;
+
+      if (repaid < halfAmount) {
+        throw new Error(
+          `At least 50% must be repaid to extend. Currently repaid: ${repaid.toFixed(
+            2
+          )} USDC, required: ${halfAmount.toFixed(2)} USDC`
+        );
+      }
+
+      // Check due date (must be at least 1 day before due date)
+      const currentTime = Math.floor(Date.now() / 1000);
+
+      // Handle BigInt conversion properly
+      const loanDueAt = (loan as any).dueAt;
+      let dueAt: number;
+      if (typeof loanDueAt === "bigint") {
+        dueAt = Number(loanDueAt);
+      } else if (typeof loanDueAt === "string") {
+        dueAt = parseInt(loanDueAt, 10);
+      } else {
+        dueAt = Number(loanDueAt);
+      }
+
+      const oneDayInSeconds = 24 * 60 * 60;
+      const daysRemaining = (dueAt - currentTime) / (24 * 60 * 60);
+
+      // Debug logging
+      console.log("🔍 Auto-extend check:", {
+        currentTime,
+        dueAt,
+        daysRemaining: daysRemaining.toFixed(2),
+        oneDayBefore: dueAt - oneDayInSeconds,
+      });
+
+      if (currentTime >= dueAt - oneDayInSeconds) {
+        throw new Error(
+          "Cannot extend loan: too close to due date (must be at least 1 day before)"
+        );
+      }
+
+      // Contract now allows extension at any time if 50% is paid
+      // No need to check for 30 days restriction
+
+      const hash = await walletClient.writeContract({
+        address: CONTRACTS.LoanEngine as `0x${string}`,
+        abi: LoanEngineABI,
+        functionName: "autoExtendOnPartialPayment",
+        args: [BigInt(loanId)],
+      });
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+      return { hash, receipt, success: receipt.status === "success" };
+    } catch (error: any) {
+      console.error("Error auto-extending loan:", error);
+
+      // Extract revert reason if available
+      if (error?.data?.message) {
+        const errorMsg = error.data.message;
+        throw new Error(`Auto-extend failed: ${errorMsg}`);
+      }
+      if (error?.shortMessage) {
+        throw new Error(`Auto-extend failed: ${error.shortMessage}`);
+      }
+      if (error?.message) {
+        // If it's already a user-friendly error, throw it as-is
+        if (
+          error.message.includes("must be") ||
+          error.message.includes("Cannot extend") ||
+          error.message.includes("cannot be extended")
+        ) {
+          throw error;
+        }
+        throw new Error(`Auto-extend failed: ${error.message}`);
+      }
+
+      throw new Error(
+        "Failed to extend loan. Please ensure: (1) Loan is active, (2) At least 50% repaid, (3) At least 1 day before due date"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     requestLoan,
     repayLoan,
+    repayLoanWithToken,
+    autoRepayOnCreditImprovement,
+    autoExtendOnPartialPayment,
     getLoan,
     getUserLoans,
     getCreditScore,

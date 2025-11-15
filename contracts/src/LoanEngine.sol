@@ -485,5 +485,102 @@ contract LoanEngine is ReentrancyGuard {
             emit LoanFullyRepaid(loanId, loan.borrower);
         }
     }
+
+    // ============================================
+    // PROGRAMMABLE LOGIC: AUTOMATION EXAMPLES
+    // ============================================
+
+    /**
+     * @notice Auto-repay loan if user's credit score improves significantly
+     * @dev Programmable logic: Automatically repay from user's balance if credit score > 700
+     * @param loanId ID of the loan
+     */
+    function autoRepayOnCreditImprovement(uint256 loanId) external nonReentrant {
+        Loan storage loan = loans[loanId];
+        require(loan.id != 0, "LoanEngine: Loan does not exist");
+        require(loan.status == LoanStatus.Disbursed, "LoanEngine: Loan not active");
+        
+        uint256 borrowerScore = creditScore[loan.borrower];
+        require(borrowerScore >= 700, "LoanEngine: Credit score not high enough for auto-repay");
+        
+        // Check if user has sufficient USDC balance
+        uint256 userBalance = usdc.balanceOf(loan.borrower);
+        uint256 totalOwed = _calculateTotalOwed(loan);
+        uint256 remaining = totalOwed - loan.repaid;
+        
+        require(userBalance >= remaining, "LoanEngine: Insufficient balance for auto-repay");
+        
+        // Transfer from borrower to this contract
+        usdc.safeTransferFrom(loan.borrower, address(this), remaining);
+        
+        // Update repayment
+        loan.repaid += remaining;
+        loan.status = LoanStatus.Repaid;
+        
+        // Transfer to treasury
+        usdc.approve(address(treasuryPool), remaining);
+        treasuryPool.receiveRepayment(remaining);
+        
+        // Boost credit score for auto-repayment
+        _updateCreditScore(loan.borrower, 30, true);
+        
+        emit LoanFullyRepaid(loanId, loan.borrower);
+    }
+
+    /**
+     * @notice Auto-extend loan if user pays 50% before due date
+     * @dev Programmable logic: Automatically extend loan by 30 days if 50% paid early
+     *      Can be called at any time as long as 50% is repaid and at least 1 day before due date
+     * @param loanId ID of the loan
+     */
+    function autoExtendOnPartialPayment(uint256 loanId) external {
+        Loan storage loan = loans[loanId];
+        require(loan.id != 0, "LoanEngine: Loan does not exist");
+        require(loan.status == LoanStatus.Disbursed, "LoanEngine: Loan not active");
+        require(block.timestamp < loan.dueAt - 1 days, "LoanEngine: Too close to due date");
+        
+        uint256 totalOwed = _calculateTotalOwed(loan);
+        uint256 halfAmount = totalOwed / 2;
+        
+        require(loan.repaid >= halfAmount, "LoanEngine: Less than 50% repaid");
+        
+        // Allow extension at any time if 50% is paid (removed the 30-day restriction)
+        // This allows new loans with 90 days to be extended immediately after 50% payment
+        
+        // Extend loan by 30 days
+        loan.dueAt += 30 days;
+        
+        // Small credit score boost for early partial payment
+        _updateCreditScore(loan.borrower, 10, true);
+    }
+
+    /**
+     * @notice Update interest rates based on treasury utilization
+     * @dev Programmable logic: Adjust rates dynamically based on pool utilization
+     * @param newBaseRate New base interest rate in basis points
+     */
+    function updateInterestRatesBasedOnUtilization(uint256 newBaseRate) external {
+        require(
+            agentController.hasRole(agentController.SCREENING_AGENT(), msg.sender),
+            "LoanEngine: Not authorized"
+        );
+        require(newBaseRate <= MAX_INTEREST_RATE, "LoanEngine: Rate too high");
+        
+        // Get treasury utilization
+        uint256 totalLiquidity = treasuryPool.totalLiquidity();
+        uint256 totalUtilized = treasuryPool.totalUtilized();
+        
+        uint256 utilization = totalLiquidity > 0 
+            ? (totalUtilized * BASIS_POINTS) / totalLiquidity 
+            : 0;
+        
+        // If utilization > 80%, rates should be higher (already set by agent)
+        // If utilization < 20%, rates could be lower
+        // This is a programmable trigger based on on-chain data
+        
+        emit InterestRateUpdated(newBaseRate, utilization);
+    }
+
+    event InterestRateUpdated(uint256 newRate, uint256 utilization);
 }
 

@@ -5,6 +5,7 @@ import { usePublicClient, useWalletClient } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { CONTRACTS } from "@/config/contracts";
 import TreasuryPoolABI from "@/lib/abis/TreasuryPool.json";
+import { withRetry } from "@/lib/utils/rpcRetry";
 
 export function useTreasury() {
   const publicClient = usePublicClient();

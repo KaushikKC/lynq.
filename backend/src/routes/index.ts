@@ -1,10 +1,12 @@
 import { Router } from 'express';
+import rpcDebugRouter from './rpc-debug';
 import { userController } from '../controllers/userController';
 import { loanController } from '../controllers/loanController';
 import { screeningController } from '../controllers/screeningController';
 import { treasuryController } from '../controllers/treasuryController';
 import { multiCurrencyController } from '../controllers/multiCurrencyController';
 import { historyController } from '../controllers/historyController';
+import { gatewayController } from '../controllers/gatewayController';
 import * as agentController from '../controllers/agentController';
 
 const router = Router();
@@ -89,5 +91,17 @@ router.get(
 router.get('/history', historyController.getHistory.bind(historyController));
 router.post('/history/event', historyController.recordEvent.bind(historyController));
 router.get('/history/stats', historyController.getStats.bind(historyController));
+
+// Gateway routes (Circle Gateway integration)
+router.post('/gateway/deposit', gatewayController.depositToGateway.bind(gatewayController));
+router.get(
+  '/gateway/balance/:address',
+  gatewayController.getUnifiedBalance.bind(gatewayController)
+);
+router.post('/gateway/burn-intent', gatewayController.createBurnIntent.bind(gatewayController));
+router.get('/gateway/stats', gatewayController.getGatewayStats.bind(gatewayController));
+
+// Debug routes
+router.use('/debug', rpcDebugRouter);
 
 export default router;

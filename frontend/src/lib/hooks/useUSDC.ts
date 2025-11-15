@@ -6,6 +6,7 @@ import { usePublicClient, useWalletClient } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { CONTRACTS } from "@/config/contracts";
 import TestUSDCABI from "@/lib/abis/TestUSDC.json";
+import { withRetry } from "@/lib/utils/rpcRetry";
 
 export function useUSDC() {
   const { wallets } = useWallets();
@@ -55,18 +56,50 @@ export function useUSDC() {
     try {
       const amountInWei = parseUnits(amount, 6);
 
-      const hash = await walletClient.writeContract({
-        address: CONTRACTS.TestUSDC as `0x${string}`,
-        abi: TestUSDCABI,
-        functionName: "approve",
-        args: [spender as `0x${string}`, amountInWei],
-      });
+      // Debug: Log what RPC is being used
+      console.log("🔍 Approving USDC - Checking RPC configuration...");
+      if (publicClient.transport && "url" in publicClient.transport) {
+        console.log(
+          "🔍 Public Client RPC:",
+          (publicClient.transport as any).url
+        );
+      }
+      if (walletClient.transport && "url" in walletClient.transport) {
+        console.log(
+          "🔍 Wallet Client RPC:",
+          (walletClient.transport as any).url
+        );
+      }
 
+      // Execute immediately - only retry on actual rate limit errors
+      const hash = await withRetry(
+        () =>
+          walletClient.writeContract({
+            address: CONTRACTS.TestUSDC as `0x${string}`,
+            abi: TestUSDCABI,
+            functionName: "approve",
+            args: [spender as `0x${string}`, amountInWei],
+          }),
+        { maxRetries: 2, initialDelay: 2000, maxDelay: 10000 }
+      );
+
+      // Wait for receipt
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
       return { hash, receipt, success: receipt.status === "success" };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving USDC:", error);
+
+      // Better error message for rate limits
+      if (
+        error?.message?.includes("rate limit") ||
+        error?.message?.includes("exceeds defined limit")
+      ) {
+        throw new Error(
+          "RPC rate limit exceeded. Please wait a few seconds and try again. If this persists, check your RPC provider configuration."
+        );
+      }
+
       throw error;
     } finally {
       setIsLoading(false);

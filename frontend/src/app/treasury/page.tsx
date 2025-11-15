@@ -11,6 +11,8 @@ import {
   FaCalendarAlt,
   FaMoneyBillWave,
   FaGlobe,
+  FaNetworkWired,
+  FaFire,
 } from "react-icons/fa";
 import { useWallets } from "@privy-io/react-auth";
 import Header from "@/components/Header";
@@ -65,6 +67,17 @@ export default function Treasury() {
   const [distRecipients, setDistRecipients] = useState("");
   const [distAmounts, setDistAmounts] = useState("");
   const [distFrequency, setDistFrequency] = useState("2592000"); // 30 days
+
+  // Gateway States
+  const [gatewayStats, setGatewayStats] = useState<any>(null);
+  const [unifiedBalance, setUnifiedBalance] = useState("0");
+  const [gatewayDepositAmount, setGatewayDepositAmount] = useState("");
+  const [isDepositingToGateway, setIsDepositingToGateway] = useState(false);
+  const [burnAmount, setBurnAmount] = useState("");
+  const [destinationChainId, setDestinationChainId] = useState("1");
+  const [isCreatingBurnIntent, setIsCreatingBurnIntent] = useState(false);
+  const [gatewayTxHash, setGatewayTxHash] = useState("");
+  const [gatewaySuccessMessage, setGatewaySuccessMessage] = useState("");
 
   // Load treasury metrics FROM BACKEND (fast querying)
   useEffect(() => {
@@ -284,6 +297,167 @@ export default function Treasury() {
     }
   };
 
+  // Load Gateway Data
+  const loadGatewayData = async () => {
+    if (!address) return;
+
+    try {
+      const [statsResponse, balanceResponse] = await Promise.all([
+        fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+          }/gateway/stats`
+        ),
+        fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+          }/gateway/balance/${address}`
+        ),
+      ]);
+
+      const statsData = await statsResponse.json();
+      const balanceData = await balanceResponse.json();
+
+      if (statsData.success && statsData.data) {
+        setGatewayStats(statsData.data);
+      }
+
+      if (balanceData.success && balanceData.data) {
+        setUnifiedBalance(balanceData.data.unifiedBalance || "0");
+      }
+    } catch (error) {
+      console.error("Error loading Gateway data:", error);
+    }
+  };
+
+  // Handle Gateway Deposit
+  const handleGatewayDeposit = async () => {
+    if (
+      !gatewayDepositAmount ||
+      parseFloat(gatewayDepositAmount) <= 0 ||
+      !address
+    )
+      return;
+
+    setIsDepositingToGateway(true);
+    try {
+      // First, approve USDC for Gateway Manager
+      const gatewayManagerAddress =
+        gatewayStats?.gatewayAddress || CONTRACTS.GatewayManager;
+      if (!gatewayManagerAddress) {
+        throw new Error("Gateway Manager address not found");
+      }
+
+      const amountInWei = (parseFloat(gatewayDepositAmount) * 1e6).toString();
+      await approve(gatewayManagerAddress, gatewayDepositAmount);
+
+      // Then deposit via API
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+        }/gateway/deposit`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount: parseFloat(gatewayDepositAmount),
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        setGatewayDepositAmount("");
+        setGatewayTxHash(data.data?.txHash || data.data?.hash || "");
+        setGatewaySuccessMessage(
+          `Successfully deposited ${gatewayDepositAmount} USDC to Gateway!`
+        );
+        setShowSuccessToast(true);
+        setTimeout(() => {
+          setShowSuccessToast(false);
+          setGatewayTxHash("");
+          setGatewaySuccessMessage("");
+        }, 5000);
+        // Reload Gateway data
+        await loadGatewayData();
+        // Reload user balance
+        const userResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+          }/user/${address}/summary`
+        );
+        const userData = await userResponse.json();
+        if (userData.success && userData.data) {
+          setUsdcBalance(userData.data.usdcBalance?.toString() || "0");
+        }
+      } else {
+        throw new Error(data.error || "Gateway deposit failed");
+      }
+    } catch (error) {
+      console.error("Error depositing to Gateway:", error);
+      alert(
+        error instanceof Error ? error.message : "Failed to deposit to Gateway"
+      );
+    } finally {
+      setIsDepositingToGateway(false);
+    }
+  };
+
+  // Handle Burn Intent Creation
+  const handleCreateBurnIntent = async () => {
+    if (!burnAmount || parseFloat(burnAmount) <= 0) return;
+
+    setIsCreatingBurnIntent(true);
+    try {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+        }/gateway/burn-intent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount: parseFloat(burnAmount),
+            destinationChainId: parseInt(destinationChainId),
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        const messageHash = data.data?.messageHash || data.data?.txHash || "";
+        setBurnAmount("");
+        setGatewayTxHash(messageHash);
+        setGatewaySuccessMessage(
+          `Burn intent created successfully! Cross-chain transfer initiated.`
+        );
+        setShowSuccessToast(true);
+        setTimeout(() => {
+          setShowSuccessToast(false);
+          setGatewayTxHash("");
+          setGatewaySuccessMessage("");
+        }, 5000);
+        // Reload Gateway data
+        await loadGatewayData();
+      } else {
+        throw new Error(data.error || "Failed to create burn intent");
+      }
+    } catch (error) {
+      console.error("Error creating burn intent:", error);
+      alert(
+        error instanceof Error ? error.message : "Failed to create burn intent"
+      );
+    } finally {
+      setIsCreatingBurnIntent(false);
+    }
+  };
+
   // Load Treasury Admin Data
   const loadAdminData = async () => {
     setIsLoadingAdmin(true);
@@ -373,6 +547,11 @@ export default function Treasury() {
       if (data.success) {
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 3000);
+
+        // Wait 1 second before reloading to avoid RPC rate limits
+        // The backend also adds a 500ms delay, so total is ~1.5s
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         await loadAdminData();
       } else {
         alert(
@@ -454,6 +633,10 @@ export default function Treasury() {
       if (data.success) {
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 3000);
+
+        // Wait 1 second before reloading to avoid RPC rate limits
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         await loadAdminData();
       } else {
         alert(
@@ -492,7 +675,10 @@ export default function Treasury() {
               <button
                 onClick={() => {
                   setShowAdminPanel(!showAdminPanel);
-                  if (!showAdminPanel) loadAdminData();
+                  if (!showAdminPanel) {
+                    loadAdminData();
+                    loadGatewayData();
+                  }
                 }}
                 className="bg-gradient-to-r from-[#FFD93D] to-[#FFC700] hover:from-[#FFC700] hover:to-[#FFD93D] text-[#0C0C0C] px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all"
               >
@@ -770,6 +956,172 @@ export default function Treasury() {
                   </div>
                 )}
               </div>
+
+              {/* Circle Gateway Integration */}
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FaNetworkWired className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-2xl font-extrabold font-heading text-[#0C0C0C]">
+                    Circle Gateway Integration
+                  </h2>
+                </div>
+                <p className="text-sm text-[#8E8E8E] mb-6">
+                  Unified USDC balance across chains. Deposit to Gateway Wallet
+                  for cross-chain transfers.
+                </p>
+
+                {/* Gateway Stats */}
+                {gatewayStats && (
+                  <div className="grid md:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white rounded-xl p-4 shadow">
+                      <div className="text-sm text-[#8E8E8E] mb-1">
+                        Gateway Address
+                      </div>
+                      <div className="text-xs font-mono text-[#0C0C0C] break-all">
+                        {gatewayStats.gatewayAddress || "N/A"}
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow">
+                      <div className="text-sm text-[#8E8E8E] mb-1">
+                        Total Unified Liquidity
+                      </div>
+                      <div className="text-lg font-bold text-[#0C0C0C]">
+                        {parseFloat(
+                          gatewayStats.totalUnifiedLiquidity || "0"
+                        ).toFixed(2)}{" "}
+                        USDC
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow">
+                      <div className="text-sm text-[#8E8E8E] mb-1">
+                        Your Unified Balance
+                      </div>
+                      <div className="text-lg font-bold text-[#0C0C0C]">
+                        {parseFloat(unifiedBalance).toFixed(2)} USDC
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 shadow">
+                      <div className="text-sm text-[#8E8E8E] mb-1">
+                        Chain ID
+                      </div>
+                      <div className="text-lg font-bold text-[#0C0C0C]">
+                        {gatewayStats.chainId || "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Deposit to Gateway */}
+                <div className="bg-white rounded-xl p-4 mb-4 border-2 border-blue-100">
+                  <h3 className="text-lg font-bold text-[#0C0C0C] mb-3">
+                    Deposit to Gateway
+                  </h3>
+                  <p className="text-xs text-[#8E8E8E] mb-3">
+                    Deposit USDC to Gateway Wallet for unified cross-chain
+                    balance. Requires USDC approval first.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Amount (USDC)"
+                      value={gatewayDepositAmount}
+                      onChange={(e) => setGatewayDepositAmount(e.target.value)}
+                      className="flex-1 px-4 py-2 border-2 border-[#EDEDED] rounded-lg focus:outline-none focus:border-blue-500"
+                      step="0.01"
+                      min="0"
+                    />
+                    <button
+                      onClick={handleGatewayDeposit}
+                      disabled={
+                        !gatewayDepositAmount ||
+                        parseFloat(gatewayDepositAmount) <= 0 ||
+                        isDepositingToGateway
+                      }
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                    >
+                      {isDepositingToGateway ? (
+                        <>
+                          <FaSpinner className="w-4 h-4 animate-spin" />
+                          Depositing...
+                        </>
+                      ) : (
+                        <>
+                          <FaArrowDown className="w-4 h-4" />
+                          Deposit
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Create Burn Intent */}
+                <div className="bg-white rounded-xl p-4 border-2 border-cyan-100">
+                  <h3 className="text-lg font-bold text-[#0C0C0C] mb-3">
+                    Create Burn Intent (Cross-Chain Transfer)
+                  </h3>
+                  <p className="text-xs text-[#8E8E8E] mb-3">
+                    Create a burn intent to transfer USDC to another chain via
+                    Circle Gateway attestation.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        placeholder="Amount (USDC)"
+                        value={burnAmount}
+                        onChange={(e) => setBurnAmount(e.target.value)}
+                        className="flex-1 px-4 py-2 border-2 border-[#EDEDED] rounded-lg focus:outline-none focus:border-cyan-500"
+                        step="0.01"
+                        min="0"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Destination Chain ID"
+                        value={destinationChainId}
+                        onChange={(e) => setDestinationChainId(e.target.value)}
+                        className="w-40 px-4 py-2 border-2 border-[#EDEDED] rounded-lg focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <button
+                      onClick={handleCreateBurnIntent}
+                      disabled={
+                        !burnAmount ||
+                        parseFloat(burnAmount) <= 0 ||
+                        !destinationChainId ||
+                        isCreatingBurnIntent
+                      }
+                      className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                    >
+                      {isCreatingBurnIntent ? (
+                        <>
+                          <FaSpinner className="w-4 h-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <FaFire className="w-4 h-4" />
+                          Create Burn Intent
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="mt-3 p-3 bg-cyan-50 rounded-lg border border-cyan-200">
+                    <div className="text-xs font-semibold text-cyan-800 mb-1">
+                      💡 How it works:
+                    </div>
+                    <ul className="text-xs text-cyan-700 space-y-1">
+                      <li>
+                        • Deposit USDC to Gateway Wallet (unified balance)
+                      </li>
+                      <li>• Create burn intent to transfer to another chain</li>
+                      <li>• Circle Gateway handles cross-chain attestation</li>
+                      <li>
+                        • USDC is minted on destination chain via Gateway API
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -987,8 +1339,15 @@ export default function Treasury() {
         <Toast
           type="success"
           title="Success !"
-          message="Transaction processed successfully!"
-          onClose={() => setShowSuccessToast(false)}
+          message={
+            gatewaySuccessMessage || "Transaction processed successfully!"
+          }
+          txHash={gatewayTxHash || txHash}
+          onClose={() => {
+            setShowSuccessToast(false);
+            setGatewayTxHash("");
+            setGatewaySuccessMessage("");
+          }}
         />
       )}
 

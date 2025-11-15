@@ -9,6 +9,7 @@
 export { useContracts, useContract } from "./useContracts";
 export { useLoan } from "./useLoan";
 export { useUSDC } from "./useUSDC";
+export { useToken } from "./useToken";
 export { useVerification } from "./useVerification";
 export { useTreasury } from "./useTreasury";
 

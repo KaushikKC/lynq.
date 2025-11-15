@@ -6,10 +6,17 @@ interface ToastProps {
   type: "error" | "success" | "warning";
   message: string;
   title?: string;
+  txHash?: string;
   onClose: () => void;
 }
 
-export default function Toast({ type, message, title, onClose }: ToastProps) {
+export default function Toast({
+  type,
+  message,
+  title,
+  txHash,
+  onClose,
+}: ToastProps) {
   const colors = {
     error: {
       accent: "#FF6B6B",
@@ -31,8 +38,17 @@ export default function Toast({ type, message, title, onClose }: ToastProps) {
   const currentColor = colors[type];
 
   return (
-    <div className="fixed top-24 right-6 z-50 flex w-3/4 h-24 overflow-hidden bg-white shadow-lg max-w-96 rounded-xl animate-slide-in">
-      <svg width="16" height="96" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
+    <div
+      className={`fixed top-24 right-6 z-50 flex w-3/4 ${
+        txHash ? "h-32" : "h-24"
+      } overflow-hidden bg-white shadow-lg max-w-96 rounded-xl animate-slide-in`}
+    >
+      <svg
+        width="16"
+        height="96"
+        xmlns="http://www.w3.org/2000/svg"
+        className="flex-shrink-0"
+      >
         <path
           d="M 8 0 
                    Q 4 4.8, 8 9.6 
@@ -59,11 +75,26 @@ export default function Toast({ type, message, title, onClose }: ToastProps) {
           className="mt-1.5 text-xl font-bold leading-8 mr-3 overflow-hidden text-ellipsis whitespace-nowrap"
           style={{ color: currentColor.text }}
         >
-          {title || (type === "error" ? "Notice !" : type === "success" ? "Success !" : "Warning !")}
+          {title ||
+            (type === "error"
+              ? "Notice !"
+              : type === "success"
+              ? "Success !"
+              : "Warning !")}
         </p>
         <p className="overflow-hidden leading-5 break-all text-[#8E8E8E] max-h-10">
           {message}
         </p>
+        {txHash && (
+          <a
+            href={`https://testnet.arcscan.app/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 block truncate"
+          >
+            View on Arcscan: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+          </a>
+        )}
       </div>
       <button
         onClick={onClose}
@@ -87,4 +118,3 @@ export default function Toast({ type, message, title, onClose }: ToastProps) {
     </div>
   );
 }
-
