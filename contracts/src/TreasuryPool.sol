@@ -28,11 +28,50 @@ contract TreasuryPool is ReentrancyGuard {
     // Authorized loan engines that can request funds
     mapping(address => bool) public authorizedLoanEngines;
     
+    // Multi-currency support
+    mapping(address => bool) public supportedTokens;
+    mapping(address => uint256) public tokenBalances;
+    mapping(address => mapping(address => uint256)) public userDepositsPerToken;
+    mapping(address => address) public priceOracles;
+    
+    // Budget Allocation System
+    struct Allocation {
+        string name;
+        uint256 percentage; // in basis points
+        address destination;
+        uint256 allocated;
+        uint256 spent;
+        bool active;
+    }
+    
+    mapping(uint256 => Allocation) public allocations;
+    uint256 public allocationCount;
+    uint256 public totalAllocationPercentage;
+    
+    // Scheduled Distribution System (Payroll)
+    struct Distribution {
+        address[] recipients;
+        uint256[] amounts;
+        uint256 frequency; // in seconds
+        uint256 lastExecuted;
+        bool active;
+    }
+    
+    mapping(uint256 => Distribution) public distributions;
+    uint256 public distributionCount;
+    
+    // Events
     event Deposited(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event LiquidityProvided(address indexed loanEngine, uint256 amount);
     event RepaymentReceived(address indexed loanEngine, uint256 amount);
     event LoanEngineAuthorized(address indexed loanEngine, bool authorized);
+    event TokenAdded(address indexed token, address indexed oracle);
+    event MultiCurrencyDeposit(address indexed user, address indexed token, uint256 amount, uint256 usdcEquivalent);
+    event AllocationCreated(uint256 indexed allocationId, string name, uint256 percentage);
+    event FundsAllocated(uint256 indexed allocationId, uint256 amount);
+    event DistributionCreated(uint256 indexed distributionId, uint256 frequency);
+    event DistributionExecuted(uint256 indexed distributionId, uint256 totalAmount);
     
     modifier onlyTreasuryAgent() {
         require(
@@ -56,6 +95,9 @@ contract TreasuryPool is ReentrancyGuard {
         
         usdc = IERC20(_usdc);
         agentController = AgentController(_agentController);
+        
+        // Initialize USDC as supported token
+        supportedTokens[_usdc] = true;
     }
     
     /**
@@ -192,6 +234,211 @@ contract TreasuryPool is ReentrancyGuard {
     function getUtilizationRatio() external view returns (uint256) {
         if (totalLiquidity == 0) return 0;
         return (totalUtilized * BASIS_POINTS) / totalLiquidity;
+    }
+    
+    // ============================================
+    // MULTI-CURRENCY SUPPORT
+    // ============================================
+    
+    /**
+     * @notice Add supported token for cross-border payments
+     * @param token Token address to add
+     * @param priceOracle Price oracle address for conversion
+     */
+    function addSupportedToken(address token, address priceOracle) 
+        external 
+        onlyTreasuryAgent 
+    {
+        require(token != address(0), "TreasuryPool: Invalid token");
+        supportedTokens[token] = true;
+        priceOracles[token] = priceOracle;
+        emit TokenAdded(token, priceOracle);
+    }
+    
+    /**
+     * @notice Deposit any supported token (auto-converts to USDC equivalent)
+     * @param token Token address to deposit
+     * @param amount Amount to deposit
+     */
+    function depositToken(address token, uint256 amount) external nonReentrant {
+        require(supportedTokens[token], "TreasuryPool: Token not supported");
+        require(amount > 0, "TreasuryPool: Amount must be greater than 0");
+        
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        
+        // Convert to USDC equivalent for accounting
+        uint256 usdcEquivalent = _convertToUSDC(token, amount);
+        
+        userDepositsPerToken[msg.sender][token] += amount;
+        deposits[msg.sender] += usdcEquivalent;
+        totalLiquidity += usdcEquivalent;
+        tokenBalances[token] += amount;
+        
+        emit MultiCurrencyDeposit(msg.sender, token, amount, usdcEquivalent);
+    }
+    
+    /**
+     * @notice Convert token amount to USDC equivalent
+     * @param token Token address
+     * @param amount Amount to convert
+     * @return uint256 USDC equivalent
+     */
+    function _convertToUSDC(address token, uint256 amount) internal view returns (uint256) {
+        if (token == address(usdc)) return amount;
+        
+        // For hackathon: Simple 1:1 conversion
+        // In production: Query Chainlink price oracle
+        return amount;
+    }
+    
+    // ============================================
+    // ALLOCATION SYSTEM
+    // ============================================
+    
+    /**
+     * @notice Create budget allocation rule
+     * @param name Name of allocation (e.g., "High-Risk Loans")
+     * @param percentage Percentage in basis points
+     * @param destination Destination address for allocation
+     * @return uint256 Allocation ID
+     */
+    function createAllocation(
+        string calldata name,
+        uint256 percentage,
+        address destination
+    ) external onlyTreasuryAgent returns (uint256) {
+        require(percentage > 0 && percentage <= BASIS_POINTS, "TreasuryPool: Invalid percentage");
+        require(totalAllocationPercentage + percentage <= BASIS_POINTS, "TreasuryPool: Total exceeds 100%");
+        require(destination != address(0), "TreasuryPool: Invalid destination");
+        
+        allocationCount++;
+        allocations[allocationCount] = Allocation({
+            name: name,
+            percentage: percentage,
+            destination: destination,
+            allocated: 0,
+            spent: 0,
+            active: true
+        });
+        
+        totalAllocationPercentage += percentage;
+        emit AllocationCreated(allocationCount, name, percentage);
+        return allocationCount;
+    }
+    
+    /**
+     * @notice Execute allocations based on current treasury balance
+     */
+    function executeAllocations() external onlyTreasuryAgent nonReentrant {
+        uint256 availableFunds = totalLiquidity - totalUtilized;
+        
+        for (uint256 i = 1; i <= allocationCount; i++) {
+            Allocation storage alloc = allocations[i];
+            if (!alloc.active) continue;
+            
+            uint256 allocAmount = (availableFunds * alloc.percentage) / BASIS_POINTS;
+            alloc.allocated += allocAmount;
+            
+            emit FundsAllocated(i, allocAmount);
+        }
+    }
+    
+    /**
+     * @notice Deactivate an allocation
+     * @param allocationId ID of allocation to deactivate
+     */
+    function deactivateAllocation(uint256 allocationId) external onlyTreasuryAgent {
+        require(allocationId > 0 && allocationId <= allocationCount, "TreasuryPool: Invalid allocation ID");
+        Allocation storage alloc = allocations[allocationId];
+        require(alloc.active, "TreasuryPool: Allocation already inactive");
+        
+        alloc.active = false;
+        totalAllocationPercentage -= alloc.percentage;
+    }
+    
+    // ============================================
+    // SCHEDULED DISTRIBUTIONS (PAYROLL)
+    // ============================================
+    
+    /**
+     * @notice Schedule recurring distribution (payroll-style)
+     * @param recipients Array of recipient addresses
+     * @param amounts Array of amounts for each recipient
+     * @param frequency Frequency in seconds (e.g., 30 days)
+     * @return uint256 Distribution ID
+     */
+    function scheduleDistribution(
+        address[] calldata recipients,
+        uint256[] calldata amounts,
+        uint256 frequency
+    ) external onlyTreasuryAgent returns (uint256) {
+        require(recipients.length == amounts.length, "TreasuryPool: Length mismatch");
+        require(recipients.length > 0, "TreasuryPool: No recipients");
+        require(frequency > 0, "TreasuryPool: Invalid frequency");
+        
+        distributionCount++;
+        Distribution storage dist = distributions[distributionCount];
+        dist.recipients = recipients;
+        dist.amounts = amounts;
+        dist.frequency = frequency;
+        dist.lastExecuted = block.timestamp;
+        dist.active = true;
+        
+        emit DistributionCreated(distributionCount, frequency);
+        return distributionCount;
+    }
+    
+    /**
+     * @notice Execute due distributions
+     */
+    function executeDistributions() external nonReentrant {
+        for (uint256 i = 1; i <= distributionCount; i++) {
+            Distribution storage dist = distributions[i];
+            
+            if (!dist.active) continue;
+            if (block.timestamp < dist.lastExecuted + dist.frequency) continue;
+            
+            uint256 totalAmount = 0;
+            for (uint256 j = 0; j < dist.recipients.length; j++) {
+                usdc.safeTransfer(dist.recipients[j], dist.amounts[j]);
+                totalAmount += dist.amounts[j];
+            }
+            
+            dist.lastExecuted = block.timestamp;
+            emit DistributionExecuted(i, totalAmount);
+        }
+    }
+    
+    /**
+     * @notice Deactivate a scheduled distribution
+     * @param distributionId ID of distribution to deactivate
+     */
+    function deactivateDistribution(uint256 distributionId) external onlyTreasuryAgent {
+        require(distributionId > 0 && distributionId <= distributionCount, "TreasuryPool: Invalid distribution ID");
+        Distribution storage dist = distributions[distributionId];
+        require(dist.active, "TreasuryPool: Distribution already inactive");
+        
+        dist.active = false;
+    }
+    
+    /**
+     * @notice Get allocation details
+     * @param allocationId Allocation ID
+     * @return Allocation struct
+     */
+    function getAllocation(uint256 allocationId) external view returns (Allocation memory) {
+        require(allocationId > 0 && allocationId <= allocationCount, "TreasuryPool: Invalid allocation ID");
+        return allocations[allocationId];
+    }
+    
+    /**
+     * @notice Get distribution details
+     * @param distributionId Distribution ID
+     * @return Distribution struct
+     */
+    function getDistribution(uint256 distributionId) external view returns (Distribution memory) {
+        require(distributionId > 0 && distributionId <= distributionCount, "TreasuryPool: Invalid distribution ID");
+        return distributions[distributionId];
     }
 }
 

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./AgentController.sol";
 import "./VerificationSBT.sol";
 import "./TreasuryPool.sol";
+import "./MultiCurrencyManager.sol";
 
 /**
  * @title LoanEngine
@@ -41,6 +42,7 @@ contract LoanEngine is ReentrancyGuard {
     AgentController public immutable agentController;
     VerificationSBT public immutable verificationSBT;
     TreasuryPool public immutable treasuryPool;
+    MultiCurrencyManager public multiCurrencyManager;
     
     uint256 private _loanIdCounter;
     
@@ -139,6 +141,16 @@ contract LoanEngine is ReentrancyGuard {
         agentController = AgentController(_agentController);
         verificationSBT = VerificationSBT(_verificationSBT);
         treasuryPool = TreasuryPool(_treasuryPool);
+    }
+    
+    /**
+     * @notice Set multi-currency manager (can only be called once)
+     * @param _multiCurrencyManager Address of the multi-currency manager
+     */
+    function setMultiCurrencyManager(address _multiCurrencyManager) external onlyScreeningAgent {
+        require(address(multiCurrencyManager) == address(0), "LoanEngine: Manager already set");
+        require(_multiCurrencyManager != address(0), "LoanEngine: Invalid manager address");
+        multiCurrencyManager = MultiCurrencyManager(_multiCurrencyManager);
     }
     
     /**
@@ -410,6 +422,68 @@ contract LoanEngine is ReentrancyGuard {
     function getLoan(uint256 loanId) external view returns (Loan memory) {
         require(loans[loanId].id != 0, "LoanEngine: Loan does not exist");
         return loans[loanId];
+    }
+    
+    /**
+     * @notice Repay loan with any supported token
+     * @param loanId ID of the loan to repay
+     * @param token Token address for repayment
+     * @param amount Amount to repay in the specified token
+     */
+    function repayLoanWithToken(
+        uint256 loanId,
+        address token,
+        uint256 amount
+    ) external nonReentrant {
+        require(address(multiCurrencyManager) != address(0), "LoanEngine: Multi-currency not enabled");
+        
+        Loan storage loan = loans[loanId];
+        require(loan.id != 0, "LoanEngine: Loan does not exist");
+        require(loan.status == LoanStatus.Disbursed, "LoanEngine: Loan not disbursed");
+        require(amount > 0, "LoanEngine: Amount must be greater than 0");
+        require(multiCurrencyManager.isTokenSupported(token), "LoanEngine: Token not supported");
+        
+        // Convert to USDC equivalent
+        uint256 usdcEquivalent = multiCurrencyManager.convertToUSDC(token, amount);
+        
+        uint256 totalOwed = _calculateTotalOwed(loan);
+        uint256 remaining = totalOwed - loan.repaid;
+        require(usdcEquivalent <= remaining, "LoanEngine: Amount exceeds balance");
+        
+        // Transfer token from borrower to this contract
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        
+        // If not USDC, convert to USDC for treasury
+        if (token != address(usdc)) {
+            // In production: swap through DEX or Circle Gateway
+            // For hackathon: assume 1:1 conversion is handled
+            IERC20(token).approve(address(treasuryPool), amount);
+        }
+        
+        // Update repayment in USDC terms
+        loan.repaid += usdcEquivalent;
+        
+        emit LoanRepaid(loanId, msg.sender, usdcEquivalent, loan.repaid);
+        
+        // Check if fully repaid
+        if (loan.repaid >= totalOwed) {
+            loan.status = LoanStatus.Repaid;
+            
+            // Transfer to treasury (in USDC)
+            if (token == address(usdc)) {
+                usdc.approve(address(treasuryPool), loan.repaid);
+                treasuryPool.receiveRepayment(loan.repaid);
+            }
+            
+            // Update credit score positively for on-time repayment
+            if (block.timestamp <= loan.dueAt) {
+                _updateCreditScore(loan.borrower, 50, true);
+            } else {
+                _updateCreditScore(loan.borrower, 10, true);
+            }
+            
+            emit LoanFullyRepaid(loanId, loan.borrower);
+        }
     }
 }
 
