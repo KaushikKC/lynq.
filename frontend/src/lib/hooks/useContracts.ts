@@ -112,12 +112,20 @@ export function useContracts() {
 
 /**
  * Hook to get a specific contract
+ * Only supports contracts that have ABIs available
  */
-export function useContract(contractName: keyof typeof CONTRACTS) {
+type ContractWithABI =
+  | "LoanEngine"
+  | "TreasuryPool"
+  | "AgentController"
+  | "VerificationSBT"
+  | "TestUSDC";
+
+export function useContract(contractName: ContractWithABI) {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
 
-  const ABIs = {
+  const ABIs: Record<ContractWithABI, typeof LoanEngineABI> = {
     LoanEngine: LoanEngineABI,
     TreasuryPool: TreasuryPoolABI,
     AgentController: AgentControllerABI,
