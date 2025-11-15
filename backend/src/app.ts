@@ -3,8 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import router from './routes';
-// import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-// import { logger } from './utils/logger';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { logger } from './utils/logger';
 
 export const createApp = (): Application => {
   const app = express();
@@ -37,10 +37,10 @@ export const createApp = (): Application => {
 
   // Request logging
   app.use((req, res, next) => {
-    // logger.info(`${req.method} ${req.path}`, {
-    //   ip: req.ip,
-    //   userAgent: req.get('user-agent'),
-    // });
+    logger.info(`${req.method} ${req.path}`, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
     next();
   });
 
