@@ -1,6 +1,6 @@
 // Deployed Contract Addresses on Arc Testnet
 export const CONTRACTS = {
-  VerificationSBT: "0x503B21D6cd2e49F814a4fB620a6aAf3228043A8f",
+  VerificationSBT: "0x2D5A0Ee039A2eC9331018035be508E34dAbb2958",
   AgentController: "0x405A688E1C05dB9dee85A695F008e6926859aC4c",
   TreasuryPool: "0x4FdF07fEce136bf05c63Bd77FF8Fc9d6f04cF301",
   LoanEngine: "0xEC4BEA60368f3aB46355CE1f1F0D2e67B2377022",
