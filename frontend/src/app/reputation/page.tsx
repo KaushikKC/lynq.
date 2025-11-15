@@ -22,8 +22,8 @@ export default function ReputationDashboard() {
   // Mock data
   const currentScore = 640;
   const targetScore = 700; // Silver tier
-  const currentTier = "Bronze";
-  const nextTier = "Silver";
+  const currentTier: string = "Bronze";
+  const nextTier: string = "Silver";
   const progress = ((currentScore - 600) / (targetScore - 600)) * 100; // Bronze starts at 600
   const verifiedReferrals = 2;
   const referralScoreBoost = 20;
@@ -40,8 +40,20 @@ export default function ReputationDashboard() {
   };
 
   const loanHistory: LoanHistory[] = [
-    { date: "10 Nov", loan: "$10", repaid: true, status: "success", scoreChange: +10 },
-    { date: "15 Nov", loan: "$15", repaid: false, status: "failed", scoreChange: -5 },
+    {
+      date: "10 Nov",
+      loan: "$10",
+      repaid: true,
+      status: "success",
+      scoreChange: +10,
+    },
+    {
+      date: "15 Nov",
+      loan: "$15",
+      repaid: false,
+      status: "failed",
+      scoreChange: -5,
+    },
   ];
 
   const generateReferralLink = () => {
@@ -66,7 +78,7 @@ export default function ReputationDashboard() {
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      
+
       <main className="pt-24 pb-20 px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -90,7 +102,7 @@ export default function ReputationDashboard() {
                 <h2 className="text-2xl font-extrabold font-heading text-[#0C0C0C] mb-6">
                   Credit Score
                 </h2>
-                
+
                 <div className="flex items-center justify-center mb-6">
                   <div className="relative w-48 h-48">
                     {/* Background Circle */}
@@ -113,7 +125,9 @@ export default function ReputationDashboard() {
                         strokeWidth="12"
                         strokeLinecap="round"
                         strokeDasharray={`${2 * Math.PI * 84}`}
-                        strokeDashoffset={`${2 * Math.PI * 84 * (1 - progress / 100)}`}
+                        strokeDashoffset={`${
+                          2 * Math.PI * 84 * (1 - progress / 100)
+                        }`}
                         className="transition-all duration-1000"
                       />
                     </svg>
@@ -131,7 +145,8 @@ export default function ReputationDashboard() {
 
                 <div className="text-center space-y-2">
                   <div className="text-lg font-semibold text-[#0C0C0C]">
-                    Current Score: {currentScore} / Tier: {currentTier} → {nextTier}
+                    Current Score: {currentScore} / Tier: {currentTier} →{" "}
+                    {nextTier}
                   </div>
                   <div className="text-sm text-[#8E8E8E]">
                     {targetScore - currentScore} points until {nextTier}
@@ -162,11 +177,19 @@ export default function ReputationDashboard() {
                             cy="64"
                             r="56"
                             fill="none"
-                            stroke={key === "repayment" ? "#00D26A" : key === "verification" ? "#FFD93D" : "#B388FF"}
+                            stroke={
+                              key === "repayment"
+                                ? "#00D26A"
+                                : key === "verification"
+                                ? "#FFD93D"
+                                : "#B388FF"
+                            }
                             strokeWidth="8"
                             strokeLinecap="round"
                             strokeDasharray={`${2 * Math.PI * 56}`}
-                            strokeDashoffset={`${2 * Math.PI * 56 * (1 - data.percentage / 100)}`}
+                            strokeDashoffset={`${
+                              2 * Math.PI * 56 * (1 - data.percentage / 100)
+                            }`}
                           />
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -212,7 +235,9 @@ export default function ReputationDashboard() {
                 <div className="w-full bg-[#EDEDED] rounded-full h-2 mt-4">
                   <div
                     className="bg-gradient-to-r from-[#FFD93D] to-[#FFC700] h-full rounded-full"
-                    style={{ width: `${(repaymentStreak / nextMilestone) * 100}%` }}
+                    style={{
+                      width: `${(repaymentStreak / nextMilestone) * 100}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -223,7 +248,7 @@ export default function ReputationDashboard() {
               <h2 className="text-2xl font-extrabold font-heading text-[#0C0C0C] mb-6">
                 Badges
               </h2>
-              
+
               <div className="space-y-4">
                 {hasTrustedBorrowerBadge ? (
                   <div className="bg-gradient-to-br from-[#FFD93D] to-[#FFC700] rounded-2xl p-6 text-center">
@@ -231,9 +256,7 @@ export default function ReputationDashboard() {
                     <div className="text-lg font-extrabold font-heading text-[#0C0C0C] mb-1">
                       Trusted Borrower
                     </div>
-                    <div className="text-sm text-[#0C0C0C]/70">
-                      NFT Badge
-                    </div>
+                    <div className="text-sm text-[#0C0C0C]/70">NFT Badge</div>
                     <div className="text-xs text-[#0C0C0C]/60 mt-2">
                       Earned after 3 successful loans
                     </div>
@@ -256,23 +279,49 @@ export default function ReputationDashboard() {
               Tier Badges
             </h2>
             <div className="grid md:grid-cols-3 gap-4">
-              <div className={`p-4 rounded-2xl border-2 ${currentTier === "Bronze" ? "border-[#FFD93D] bg-[#FFD93D]/10" : "border-[#EDEDED]"}`}>
+              <div
+                className={`p-4 rounded-2xl border-2 ${
+                  currentTier === "Bronze"
+                    ? "border-[#FFD93D] bg-[#FFD93D]/10"
+                    : "border-[#EDEDED]"
+                }`}
+              >
                 <div className="text-3xl mb-2">🥉</div>
-                <div className="font-extrabold font-heading text-[#0C0C0C] mb-1">Bronze</div>
+                <div className="font-extrabold font-heading text-[#0C0C0C] mb-1">
+                  Bronze
+                </div>
                 <div className="text-xs text-[#8E8E8E]">Score: 600+</div>
                 <div className="text-xs text-[#8E8E8E] mt-1">Max: $15 USDC</div>
               </div>
-              <div className={`p-4 rounded-2xl border-2 ${currentTier === "Silver" ? "border-[#FFD93D] bg-[#FFD93D]/10" : "border-[#EDEDED]"}`}>
+              <div
+                className={`p-4 rounded-2xl border-2 ${
+                  currentTier === "Silver"
+                    ? "border-[#FFD93D] bg-[#FFD93D]/10"
+                    : "border-[#EDEDED]"
+                }`}
+              >
                 <div className="text-3xl mb-2">🥈</div>
-                <div className="font-extrabold font-heading text-[#0C0C0C] mb-1">Silver</div>
+                <div className="font-extrabold font-heading text-[#0C0C0C] mb-1">
+                  Silver
+                </div>
                 <div className="text-xs text-[#8E8E8E]">Score: 700+</div>
                 <div className="text-xs text-[#8E8E8E] mt-1">Max: $50 USDC</div>
               </div>
-              <div className={`p-4 rounded-2xl border-2 ${currentTier === "Gold" ? "border-[#FFD93D] bg-[#FFD93D]/10" : "border-[#EDEDED]"}`}>
+              <div
+                className={`p-4 rounded-2xl border-2 ${
+                  currentTier === "Gold"
+                    ? "border-[#FFD93D] bg-[#FFD93D]/10"
+                    : "border-[#EDEDED]"
+                }`}
+              >
                 <div className="text-3xl mb-2">🥇</div>
-                <div className="font-extrabold font-heading text-[#0C0C0C] mb-1">Gold</div>
+                <div className="font-extrabold font-heading text-[#0C0C0C] mb-1">
+                  Gold
+                </div>
                 <div className="text-xs text-[#8E8E8E]">Score: 800+</div>
-                <div className="text-xs text-[#8E8E8E] mt-1">Max: $200 USDC</div>
+                <div className="text-xs text-[#8E8E8E] mt-1">
+                  Max: $200 USDC
+                </div>
               </div>
             </div>
           </div>
@@ -282,7 +331,7 @@ export default function ReputationDashboard() {
             <h2 className="text-2xl font-extrabold font-heading text-[#0C0C0C] mb-6">
               Loan History
             </h2>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -306,7 +355,10 @@ export default function ReputationDashboard() {
                 </thead>
                 <tbody>
                   {loanHistory.map((loan, index) => (
-                    <tr key={index} className="border-b border-[#EDEDED] last:border-0 hover:bg-[#F6F6F6] transition-colors cursor-pointer">
+                    <tr
+                      key={index}
+                      className="border-b border-[#EDEDED] last:border-0 hover:bg-[#F6F6F6] transition-colors cursor-pointer"
+                    >
                       <td className="py-4 px-4 text-[#0C0C0C] font-medium">
                         {loan.date}
                       </td>
@@ -314,7 +366,11 @@ export default function ReputationDashboard() {
                         {loan.loan}
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`font-medium ${loan.repaid ? "text-[#00D26A]" : "text-[#FF6B6B]"}`}>
+                        <span
+                          className={`font-medium ${
+                            loan.repaid ? "text-[#00D26A]" : "text-[#FF6B6B]"
+                          }`}
+                        >
                           {loan.repaid ? "Yes" : "No"}
                         </span>
                       </td>
@@ -326,8 +382,15 @@ export default function ReputationDashboard() {
                         )}
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`font-extrabold ${loan.scoreChange > 0 ? "text-[#00D26A]" : "text-[#FF6B6B]"}`}>
-                          {loan.scoreChange > 0 ? "+" : ""}{loan.scoreChange}
+                        <span
+                          className={`font-extrabold ${
+                            loan.scoreChange > 0
+                              ? "text-[#00D26A]"
+                              : "text-[#FF6B6B]"
+                          }`}
+                        >
+                          {loan.scoreChange > 0 ? "+" : ""}
+                          {loan.scoreChange}
                         </span>
                       </td>
                     </tr>
@@ -345,13 +408,17 @@ export default function ReputationDashboard() {
                   Invite friends and boost your reputation.
                 </h2>
                 <p className="text-[#8E8E8E] mb-4">
-                  Share your referral link and earn credit score boosts when friends verify and borrow.
+                  Share your referral link and earn credit score boosts when
+                  friends verify and borrow.
                 </p>
-                
+
                 {referralLink ? (
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex-1 bg-white/10 border-2 border-white/20 rounded-2xl px-4 py-3 text-white font-mono text-sm break-all">
-                      {typeof window !== "undefined" ? window.location.origin : ""}{referralLink}
+                      {typeof window !== "undefined"
+                        ? window.location.origin
+                        : ""}
+                      {referralLink}
                     </div>
                     <button
                       onClick={copyReferralLink}
@@ -382,7 +449,8 @@ export default function ReputationDashboard() {
                 <div className="mt-4 flex items-center gap-2 text-white">
                   <FaTrophy className="w-5 h-5 text-[#FFD93D]" />
                   <span className="font-semibold">
-                    {verifiedReferrals} verified referrals → +{referralScoreBoost} score boost
+                    {verifiedReferrals} verified referrals → +
+                    {referralScoreBoost} score boost
                   </span>
                 </div>
               </div>
@@ -405,4 +473,3 @@ export default function ReputationDashboard() {
     </div>
   );
 }
-
