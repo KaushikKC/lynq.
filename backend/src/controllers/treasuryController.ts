@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 
 export class TreasuryController {
   // GET /api/treasury/metrics
-  async getMetrics(req: Request, res: Response): Promise<void> {
+  async getMetrics(_req: Request, res: Response): Promise<void> {
     try {
       let treasury = await Treasury.findOne();
 
@@ -174,7 +174,7 @@ export class TreasuryController {
         return;
       }
 
-      let treasury = await Treasury.findOne();
+      const treasury = await Treasury.findOne();
 
       if (!treasury) {
         res.status(404).json({
@@ -233,7 +233,7 @@ export class TreasuryController {
         return;
       }
 
-      let treasury = await Treasury.findOne();
+      const treasury = await Treasury.findOne();
 
       if (!treasury) {
         res.status(404).json({

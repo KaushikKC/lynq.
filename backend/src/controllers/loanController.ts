@@ -538,7 +538,7 @@ export class LoanController {
   }
 
   // GET /api/loan/pending
-  async getPendingLoans(req: Request, res: Response): Promise<void> {
+  async getPendingLoans(_req: Request, res: Response): Promise<void> {
     try {
       const loans = await Loan.find({
         status: LoanStatus.REQUESTED,

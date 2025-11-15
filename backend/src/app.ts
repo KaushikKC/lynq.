@@ -31,7 +31,7 @@ export const createApp = (): Application => {
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
-    skip: req => {
+    skip: _req => {
       // Skip rate limiting in development
       return process.env.NODE_ENV === 'development';
     },
@@ -43,7 +43,7 @@ export const createApp = (): Application => {
   }
 
   // Request logging
-  app.use((req, res, next) => {
+  app.use((req, _res, next) => {
     logger.info(`${req.method} ${req.path}`, {
       ip: req.ip,
       userAgent: req.get('user-agent'),
@@ -55,7 +55,7 @@ export const createApp = (): Application => {
   app.use('/api', router);
 
   // Root endpoint
-  app.get('/', (req, res) => {
+  app.get('/', (_req, res) => {
     res.json({
       name: 'Lynq Backend API',
       version: '1.0.0',

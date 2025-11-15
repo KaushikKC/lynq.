@@ -258,41 +258,47 @@ export class UserController {
       // Update social verifications
       if (socialVerifications && Array.isArray(socialVerifications)) {
         // Merge with existing social verifications
-        const existingPlatforms = new Set(user.socialVerifications?.map(s => s.platform) || []);
+        socialVerifications.forEach(
+          (social: {
+            platform: string;
+            username?: string;
+            accountId?: string;
+            email?: string;
+            verifiedAt?: Date | string;
+          }) => {
+            const existingIndex = user.socialVerifications?.findIndex(
+              s => s.platform === social.platform
+            );
 
-        socialVerifications.forEach((social: any) => {
-          const existingIndex = user.socialVerifications?.findIndex(
-            s => s.platform === social.platform
-          );
-
-          if (existingIndex !== undefined && existingIndex >= 0 && user.socialVerifications) {
-            // Update existing
-            user.socialVerifications[existingIndex] = {
-              platform: social.platform,
-              username: social.username,
-              accountId: social.accountId,
-              email: social.email,
-              verifiedAt: social.verifiedAt ? new Date(social.verifiedAt) : new Date(),
-            };
-          } else {
-            // Add new
-            if (!user.socialVerifications) {
-              user.socialVerifications = [];
+            if (existingIndex !== undefined && existingIndex >= 0 && user.socialVerifications) {
+              // Update existing
+              user.socialVerifications[existingIndex] = {
+                platform: social.platform,
+                username: social.username,
+                accountId: social.accountId,
+                email: social.email,
+                verifiedAt: social.verifiedAt ? new Date(social.verifiedAt) : new Date(),
+              };
+            } else {
+              // Add new
+              if (!user.socialVerifications) {
+                user.socialVerifications = [];
+              }
+              user.socialVerifications.push({
+                platform: social.platform,
+                username: social.username,
+                accountId: social.accountId,
+                email: social.email,
+                verifiedAt: social.verifiedAt ? new Date(social.verifiedAt) : new Date(),
+              });
             }
-            user.socialVerifications.push({
-              platform: social.platform,
-              username: social.username,
-              accountId: social.accountId,
-              email: social.email,
-              verifiedAt: social.verifiedAt ? new Date(social.verifiedAt) : new Date(),
-            });
-          }
 
-          // Add to verifiedMethods if not already present
-          if (!user.verifiedMethods.includes(social.platform)) {
-            user.verifiedMethods.push(social.platform);
+            // Add to verifiedMethods if not already present
+            if (!user.verifiedMethods.includes(social.platform)) {
+              user.verifiedMethods.push(social.platform);
+            }
           }
-        });
+        );
       }
 
       // Update verification SBT
