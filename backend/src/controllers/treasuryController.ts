@@ -333,7 +333,7 @@ export class TreasuryController {
   }
 
   // POST /api/treasury/execute-allocations - Execute all allocations
-  async executeAllocations(req: Request, res: Response): Promise<void> {
+  async executeAllocations(_req: Request, res: Response): Promise<void> {
     try {
       const provider = new ethers.JsonRpcProvider(
         process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
@@ -425,7 +425,7 @@ export class TreasuryController {
   }
 
   // POST /api/treasury/execute-distributions - Execute due distributions
-  async executeDistributions(req: Request, res: Response): Promise<void> {
+  async executeDistributions(_req: Request, res: Response): Promise<void> {
     try {
       const provider = new ethers.JsonRpcProvider(
         process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
@@ -458,7 +458,7 @@ export class TreasuryController {
   }
 
   // GET /api/treasury/allocations - Get all allocations
-  async getAllocations(req: Request, res: Response): Promise<void> {
+  async getAllocations(_req: Request, res: Response): Promise<void> {
     try {
       const provider = new ethers.JsonRpcProvider(
         process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'
@@ -501,7 +501,7 @@ export class TreasuryController {
   }
 
   // GET /api/treasury/distributions - Get all distributions
-  async getDistributions(req: Request, res: Response): Promise<void> {
+  async getDistributions(_req: Request, res: Response): Promise<void> {
     try {
       const provider = new ethers.JsonRpcProvider(
         process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'

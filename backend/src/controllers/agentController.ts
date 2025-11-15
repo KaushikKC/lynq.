@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ethers } from 'ethers';
-import logger from '../utils/logger.js';
+import { logger } from '../utils/logger';
 
 // NOTE: This controller handles operations that REQUIRE special roles
 // Regular user operations should be done from frontend with user's wallet

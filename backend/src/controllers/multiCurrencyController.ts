@@ -166,7 +166,7 @@ export class MultiCurrencyController {
   }
 
   // GET /api/currency/supported - Get all supported currencies
-  async getSupportedCurrencies(req: Request, res: Response): Promise<void> {
+  async getSupportedCurrencies(_req: Request, res: Response): Promise<void> {
     try {
       const provider = new ethers.JsonRpcProvider(
         process.env.ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network'

@@ -87,7 +87,7 @@ export class HistoryController {
   }
 
   // GET /api/history/stats
-  async getStats(req: Request, res: Response): Promise<void> {
+  async getStats(_req: Request, res: Response): Promise<void> {
     try {
       const stats = await Promise.all([
         Event.countDocuments({ eventType: EventType.LOAN_REQUESTED }),
@@ -118,4 +118,3 @@ export class HistoryController {
 }
 
 export const historyController = new HistoryController();
-
