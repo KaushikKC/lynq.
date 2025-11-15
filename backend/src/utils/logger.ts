@@ -1,4 +1,6 @@
 import winston from 'winston';
+import path from 'path';
+import fs from 'fs';
 
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -19,20 +21,38 @@ const consoleFormat = winston.format.combine(
   })
 );
 
-export const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: logFormat,
-  transports: [
-    new winston.transports.Console({
-      format: consoleFormat,
-    }),
+// Check if we're in a serverless environment (Vercel, AWS Lambda, etc.)
+const isServerless =
+  process.env.VERCEL === '1' || !!process.env.VERCEL_ENV || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+// Create transports array
+const transports: winston.transport[] = [
+  new winston.transports.Console({
+    format: consoleFormat,
+  }),
+];
+
+// Only add file transports if not in serverless environment
+if (!isServerless) {
+  // Ensure logs directory exists
+  const logsDir = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+
+  transports.push(
     new winston.transports.File({
-      filename: 'logs/error.log',
+      filename: path.join(logsDir, 'error.log'),
       level: 'error',
     }),
     new winston.transports.File({
-      filename: 'logs/combined.log',
-    }),
-  ],
-});
+      filename: path.join(logsDir, 'combined.log'),
+    })
+  );
+}
 
+export const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: logFormat,
+  transports,
+});
