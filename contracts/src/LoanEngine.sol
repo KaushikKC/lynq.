@@ -56,7 +56,7 @@ contract LoanEngine is ReentrancyGuard {
     uint256 public constant DEFAULT_LOAN_DURATION = 90 days;
     
     // Limits
-    uint256 public constant MIN_LOAN_AMOUNT = 100 * 10**6; // 100 USDC
+    uint256 public constant MIN_LOAN_AMOUNT = 5 * 10**6; // 5 USDC
     uint256 public constant MAX_LOAN_AMOUNT = 50000 * 10**6; // 50,000 USDC
     uint256 public constant MAX_INTEREST_RATE = 5000; // 50%
     

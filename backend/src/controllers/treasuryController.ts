@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Treasury from '../models/Treasury';
 import Loan, { LoanStatus } from '../models/Loan';
+import User from '../models/User';
 import { logger } from '../utils/logger';
 
 export class TreasuryController {
@@ -41,9 +42,8 @@ export class TreasuryController {
       const defaultedAmount = defaultedLoans.reduce((sum, loan) => sum + loan.amount, 0);
 
       const defaultRate = totalDisbursed > 0 ? defaultedAmount / totalDisbursed : 0;
-      const utilization = treasury.totalLiquidity > 0 
-        ? outstandingAmount / treasury.totalLiquidity 
-        : 0;
+      const utilization =
+        treasury.totalLiquidity > 0 ? outstandingAmount / treasury.totalLiquidity : 0;
 
       // Update treasury with calculated values
       treasury.outstandingLoans = outstandingAmount;
@@ -84,7 +84,7 @@ export class TreasuryController {
   // POST /api/treasury/deposit
   async recordDeposit(req: Request, res: Response): Promise<void> {
     try {
-      const { amount, txHash } = req.body;
+      const { amount, txHash, address } = req.body;
 
       if (!amount || amount <= 0) {
         res.status(400).json({
@@ -94,6 +94,15 @@ export class TreasuryController {
         return;
       }
 
+      if (!address) {
+        res.status(400).json({
+          success: false,
+          error: 'User address is required',
+        });
+        return;
+      }
+
+      // Update treasury totals
       let treasury = await Treasury.findOne();
 
       if (!treasury) {
@@ -112,11 +121,28 @@ export class TreasuryController {
         await treasury.save();
       }
 
-      logger.info('Deposit recorded', { amount, txHash });
+      // Update user's deposit balance
+      const user = await User.findOne({ address: address.toLowerCase() });
+      if (user) {
+        user.treasuryDeposits = (user.treasuryDeposits || 0) + amount;
+        await user.save();
+        logger.info('User deposit updated', {
+          address,
+          amount,
+          totalDeposits: user.treasuryDeposits,
+        });
+      } else {
+        logger.warn('User not found for deposit', { address });
+      }
+
+      logger.info('Deposit recorded', { amount, txHash, address });
 
       res.json({
         success: true,
-        data: treasury,
+        data: {
+          treasury,
+          userDeposits: user?.treasuryDeposits || 0,
+        },
       });
     } catch (error) {
       logger.error('Error recording deposit:', error);
@@ -130,12 +156,20 @@ export class TreasuryController {
   // POST /api/treasury/withdrawal
   async recordWithdrawal(req: Request, res: Response): Promise<void> {
     try {
-      const { amount, txHash } = req.body;
+      const { amount, txHash, address } = req.body;
 
       if (!amount || amount <= 0) {
         res.status(400).json({
           success: false,
           error: 'Valid amount is required',
+        });
+        return;
+      }
+
+      if (!address) {
+        res.status(400).json({
+          success: false,
+          error: 'User address is required',
         });
         return;
       }
@@ -154,11 +188,28 @@ export class TreasuryController {
       treasury.totalWithdrawals += amount;
       await treasury.save();
 
-      logger.info('Withdrawal recorded', { amount, txHash });
+      // Update user's deposit balance
+      const user = await User.findOne({ address: address.toLowerCase() });
+      if (user) {
+        user.treasuryDeposits = Math.max(0, (user.treasuryDeposits || 0) - amount);
+        await user.save();
+        logger.info('User withdrawal updated', {
+          address,
+          amount,
+          remainingDeposits: user.treasuryDeposits,
+        });
+      } else {
+        logger.warn('User not found for withdrawal', { address });
+      }
+
+      logger.info('Withdrawal recorded', { amount, txHash, address });
 
       res.json({
         success: true,
-        data: treasury,
+        data: {
+          treasury,
+          userDeposits: user?.treasuryDeposits || 0,
+        },
       });
     } catch (error) {
       logger.error('Error recording withdrawal:', error);
@@ -212,4 +263,3 @@ export class TreasuryController {
 }
 
 export const treasuryController = new TreasuryController();
-

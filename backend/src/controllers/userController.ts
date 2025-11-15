@@ -54,6 +54,8 @@ export class UserController {
           verificationSBT: user.verificationSBT,
           referralCount: user.referralCount,
           xp: user.xp,
+          usdcBalance: user.usdcBalance || 0,
+          treasuryDeposits: user.treasuryDeposits || 0,
           activeLoans: activeLoans.length,
           totalBorrowed,
           totalRepaid,
@@ -240,7 +242,9 @@ export class UserController {
           verified: worldIDVerification.verified || false,
           verificationLevel: worldIDVerification.verificationLevel,
           proof: worldIDVerification.proof,
-          verifiedAt: worldIDVerification.verifiedAt ? new Date(worldIDVerification.verifiedAt) : new Date(),
+          verifiedAt: worldIDVerification.verifiedAt
+            ? new Date(worldIDVerification.verifiedAt)
+            : new Date(),
           action: worldIDVerification.action,
           signal: worldIDVerification.signal,
         };
@@ -255,7 +259,7 @@ export class UserController {
       if (socialVerifications && Array.isArray(socialVerifications)) {
         // Merge with existing social verifications
         const existingPlatforms = new Set(user.socialVerifications?.map(s => s.platform) || []);
-        
+
         socialVerifications.forEach((social: any) => {
           const existingIndex = user.socialVerifications?.findIndex(
             s => s.platform === social.platform
@@ -298,7 +302,7 @@ export class UserController {
 
       await user.save();
 
-      logger.info('Verification data saved', { 
+      logger.info('Verification data saved', {
         address: normalizedAddress,
         worldIDVerified: user.worldIDVerification?.verified,
         socialCount: user.socialVerifications?.length || 0,
@@ -405,4 +409,3 @@ export class UserController {
 }
 
 export const userController = new UserController();
-

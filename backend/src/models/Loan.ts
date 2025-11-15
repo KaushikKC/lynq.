@@ -14,6 +14,7 @@ export interface ILoan extends Document {
   borrower: string;
   amount: number;
   interestRate: number;
+  duration?: number; // Duration in days (3, 7, or 30)
   issuedAt?: number;
   dueAt?: number;
   repaidAt?: number;
@@ -46,6 +47,10 @@ const LoanSchema: Schema = new Schema(
     interestRate: {
       type: Number,
       default: 0,
+    },
+    duration: {
+      type: Number,
+      // Duration in days (3, 7, or 30)
     },
     issuedAt: {
       type: Number,
@@ -84,4 +89,3 @@ LoanSchema.index({ status: 1, createdAt: -1 });
 LoanSchema.index({ dueAt: 1 });
 
 export default mongoose.model<ILoan>('Loan', LoanSchema);
-

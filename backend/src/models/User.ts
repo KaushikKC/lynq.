@@ -32,6 +32,8 @@ export interface IUser extends Document {
   creditScore: number;
   referralCount: number;
   xp: number;
+  usdcBalance: number;
+  treasuryDeposits: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -117,6 +119,14 @@ const UserSchema: Schema = new Schema(
       type: Number,
       default: 0,
     },
+    usdcBalance: {
+      type: Number,
+      default: 0,
+    },
+    treasuryDeposits: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -128,4 +138,3 @@ UserSchema.index({ creditScore: -1 });
 UserSchema.index({ createdAt: -1 });
 
 export default mongoose.model<IUser>('User', UserSchema);
-

@@ -29,6 +29,7 @@ router.post('/loan/request', loanController.requestLoan.bind(loanController));
 router.get('/loan/:loanId', loanController.getLoan.bind(loanController));
 router.get('/loan/user/:address', loanController.getUserLoans.bind(loanController));
 router.put('/loan/:loanId/approve', loanController.approveLoan.bind(loanController));
+router.post('/loan/:loanId/auto-approve', loanController.autoApproveLoan.bind(loanController));
 router.put('/loan/:loanId/disburse', loanController.disburseLoan.bind(loanController));
 router.post('/loan/repayment', loanController.recordRepayment.bind(loanController));
 router.put('/loan/:loanId/default', loanController.markAsDefaulted.bind(loanController));
