@@ -3,6 +3,7 @@ import { userController } from '../controllers/userController';
 import { loanController } from '../controllers/loanController';
 import { screeningController } from '../controllers/screeningController';
 import { treasuryController } from '../controllers/treasuryController';
+import { multiCurrencyController } from '../controllers/multiCurrencyController';
 import { historyController } from '../controllers/historyController';
 import * as agentController from '../controllers/agentController';
 
@@ -50,6 +51,39 @@ router.get('/treasury/metrics', treasuryController.getMetrics.bind(treasuryContr
 router.post('/treasury/deposit', treasuryController.recordDeposit.bind(treasuryController));
 router.post('/treasury/withdrawal', treasuryController.recordWithdrawal.bind(treasuryController));
 router.post('/treasury/repayment', treasuryController.recordRepayment.bind(treasuryController));
+
+// Treasury Management routes (NEW)
+router.post('/treasury/allocation', treasuryController.createAllocation.bind(treasuryController));
+router.post(
+  '/treasury/execute-allocations',
+  treasuryController.executeAllocations.bind(treasuryController)
+);
+router.get('/treasury/allocations', treasuryController.getAllocations.bind(treasuryController));
+router.post(
+  '/treasury/schedule-distribution',
+  treasuryController.scheduleDistribution.bind(treasuryController)
+);
+router.post(
+  '/treasury/execute-distributions',
+  treasuryController.executeDistributions.bind(treasuryController)
+);
+router.get('/treasury/distributions', treasuryController.getDistributions.bind(treasuryController));
+
+// Multi-Currency routes (NEW)
+router.post('/currency/add', multiCurrencyController.addCurrency.bind(multiCurrencyController));
+router.put('/currency/rate', multiCurrencyController.updateRate.bind(multiCurrencyController));
+router.get(
+  '/currency/convert',
+  multiCurrencyController.convertCurrency.bind(multiCurrencyController)
+);
+router.get(
+  '/currency/supported',
+  multiCurrencyController.getSupportedCurrencies.bind(multiCurrencyController)
+);
+router.get(
+  '/currency/token/:address',
+  multiCurrencyController.getTokenDetails.bind(multiCurrencyController)
+);
 
 // History routes
 router.get('/history', historyController.getHistory.bind(historyController));

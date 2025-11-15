@@ -7,6 +7,10 @@ import {
   FaArrowUp,
   FaChartLine,
   FaExclamationTriangle,
+  FaChartPie,
+  FaCalendarAlt,
+  FaMoneyBillWave,
+  FaGlobe,
 } from "react-icons/fa";
 import { useWallets } from "@privy-io/react-auth";
 import Header from "@/components/Header";
@@ -44,6 +48,23 @@ export default function Treasury() {
   const apyProjection = 8.5; // TODO: Calculate based on utilization
   const activeLoans = 142; // TODO: Fetch from backend
   const defaultedLoans = 3; // TODO: Fetch from backend
+
+  // Treasury Admin States
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [allocations, setAllocations] = useState<any[]>([]);
+  const [distributions, setDistributions] = useState<any[]>([]);
+  const [supportedCurrencies, setSupportedCurrencies] = useState<any[]>([]);
+  const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
+
+  // Allocation Form
+  const [allocationName, setAllocationName] = useState("");
+  const [allocationPercentage, setAllocationPercentage] = useState("");
+  const [allocationDestination, setAllocationDestination] = useState("");
+
+  // Distribution Form
+  const [distRecipients, setDistRecipients] = useState("");
+  const [distAmounts, setDistAmounts] = useState("");
+  const [distFrequency, setDistFrequency] = useState("2592000"); // 30 days
 
   // Load treasury metrics FROM BACKEND (fast querying)
   useEffect(() => {
@@ -263,6 +284,190 @@ export default function Treasury() {
     }
   };
 
+  // Load Treasury Admin Data
+  const loadAdminData = async () => {
+    setIsLoadingAdmin(true);
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+
+      const [allocRes, distRes, currRes] = await Promise.all([
+        fetch(`${apiUrl}/treasury/allocations`),
+        fetch(`${apiUrl}/treasury/distributions`),
+        fetch(`${apiUrl}/currency/supported`),
+      ]);
+
+      const [allocData, distData, currData] = await Promise.all([
+        allocRes.json(),
+        distRes.json(),
+        currRes.json(),
+      ]);
+
+      if (allocData.success) setAllocations(allocData.data || []);
+      if (distData.success) setDistributions(distData.data || []);
+      if (currData.success) setSupportedCurrencies(currData.data || []);
+    } catch (error) {
+      console.error("Error loading admin data:", error);
+    } finally {
+      setIsLoadingAdmin(false);
+    }
+  };
+
+  // Create Allocation
+  const handleCreateAllocation = async () => {
+    if (!allocationName || !allocationPercentage || !allocationDestination) {
+      alert("Please fill all allocation fields");
+      return;
+    }
+
+    setIsLoadingAdmin(true);
+    try {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+        }/treasury/allocation`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: allocationName,
+            percentage: parseInt(allocationPercentage),
+            destination: allocationDestination,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 3000);
+        setAllocationName("");
+        setAllocationPercentage("");
+        setAllocationDestination("");
+        await loadAdminData();
+      } else {
+        alert(
+          "Failed to create allocation: " + (data.error || "Unknown error")
+        );
+      }
+    } catch (error) {
+      console.error("Error creating allocation:", error);
+      alert("Failed to create allocation");
+    } finally {
+      setIsLoadingAdmin(false);
+    }
+  };
+
+  // Execute Allocations
+  const handleExecuteAllocations = async () => {
+    setIsLoadingAdmin(true);
+    try {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+        }/treasury/execute-allocations`,
+        { method: "POST" }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 3000);
+        await loadAdminData();
+      } else {
+        alert(
+          "Failed to execute allocations: " + (data.error || "Unknown error")
+        );
+      }
+    } catch (error) {
+      console.error("Error executing allocations:", error);
+      alert("Failed to execute allocations");
+    } finally {
+      setIsLoadingAdmin(false);
+    }
+  };
+
+  // Schedule Distribution
+  const handleScheduleDistribution = async () => {
+    if (!distRecipients || !distAmounts) {
+      alert("Please fill distribution fields");
+      return;
+    }
+
+    setIsLoadingAdmin(true);
+    try {
+      const recipients = distRecipients.split(",").map((r) => r.trim());
+      const amounts = distAmounts.split(",").map((a) => parseFloat(a.trim()));
+
+      if (recipients.length !== amounts.length) {
+        alert("Number of recipients must match number of amounts");
+        return;
+      }
+
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+        }/treasury/schedule-distribution`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipients,
+            amounts,
+            frequency: parseInt(distFrequency),
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 3000);
+        setDistRecipients("");
+        setDistAmounts("");
+        await loadAdminData();
+      } else {
+        alert(
+          "Failed to schedule distribution: " + (data.error || "Unknown error")
+        );
+      }
+    } catch (error) {
+      console.error("Error scheduling distribution:", error);
+      alert("Failed to schedule distribution");
+    } finally {
+      setIsLoadingAdmin(false);
+    }
+  };
+
+  // Execute Distributions
+  const handleExecuteDistributions = async () => {
+    setIsLoadingAdmin(true);
+    try {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+        }/treasury/execute-distributions`,
+        { method: "POST" }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 3000);
+        await loadAdminData();
+      } else {
+        alert(
+          "Failed to execute distributions: " + (data.error || "Unknown error")
+        );
+      }
+    } catch (error) {
+      console.error("Error executing distributions:", error);
+      alert("Failed to execute distributions");
+    } finally {
+      setIsLoadingAdmin(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
@@ -271,16 +476,30 @@ export default function Treasury() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <div className="text-sm text-[#8E8E8E] uppercase tracking-wider font-medium mb-2">
-              Treasury Pool
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-[#8E8E8E] uppercase tracking-wider font-medium mb-2">
+                  Treasury Pool
+                </div>
+                <h1 className="text-4xl lg:text-5xl font-extrabold font-heading text-[#0C0C0C] mb-4">
+                  Lending Pool Health
+                </h1>
+                <p className="text-lg text-[#8E8E8E]">
+                  Public treasury metrics and deposit/withdraw functionality for
+                  liquidity providers.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAdminPanel(!showAdminPanel);
+                  if (!showAdminPanel) loadAdminData();
+                }}
+                className="bg-gradient-to-r from-[#FFD93D] to-[#FFC700] hover:from-[#FFC700] hover:to-[#FFD93D] text-[#0C0C0C] px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all"
+              >
+                <FaChartPie className="w-5 h-5" />
+                {showAdminPanel ? "Hide Admin" : "Treasury Admin"}
+              </button>
             </div>
-            <h1 className="text-4xl lg:text-5xl font-extrabold font-heading text-[#0C0C0C] mb-4">
-              Lending Pool Health
-            </h1>
-            <p className="text-lg text-[#8E8E8E]">
-              Public treasury metrics and deposit/withdraw functionality for
-              liquidity providers.
-            </p>
           </div>
 
           {/* User Stats */}
@@ -308,6 +527,248 @@ export default function Treasury() {
                   )}{" "}
                   USDC
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Treasury Admin Panel */}
+          {showAdminPanel && (
+            <div className="mb-8 space-y-6">
+              {/* Multi-Currency Support */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FaGlobe className="w-6 h-6 text-purple-600" />
+                  <h2 className="text-2xl font-extrabold font-heading text-[#0C0C0C]">
+                    Multi-Currency Support
+                  </h2>
+                </div>
+                {isLoadingAdmin ? (
+                  <FaSpinner className="w-6 h-6 animate-spin text-purple-600" />
+                ) : (
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {supportedCurrencies.map((currency, idx) => (
+                      <div key={idx} className="bg-white rounded-xl p-4 shadow">
+                        <div className="text-lg font-bold text-[#0C0C0C]">
+                          {currency.symbol || "Unknown"}
+                        </div>
+                        <div className="text-sm text-[#8E8E8E]">
+                          {currency.rateDisplay || `Rate: ${currency.rate}`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Budget Allocations */}
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <FaChartPie className="w-6 h-6 text-blue-600" />
+                    <h2 className="text-2xl font-extrabold font-heading text-[#0C0C0C]">
+                      Budget Allocations
+                    </h2>
+                  </div>
+                  <button
+                    onClick={handleExecuteAllocations}
+                    disabled={isLoadingAdmin}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors"
+                  >
+                    {isLoadingAdmin ? (
+                      <FaSpinner className="w-4 h-4 animate-spin" />
+                    ) : (
+                      "Execute Allocations"
+                    )}
+                  </button>
+                </div>
+
+                {/* Create Allocation Form */}
+                <div className="bg-white rounded-xl p-4 mb-4 space-y-3">
+                  <h3 className="font-bold text-[#0C0C0C]">
+                    Create New Allocation
+                  </h3>
+                  <div className="grid md:grid-cols-4 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Name (e.g., High-Risk Loans)"
+                      value={allocationName}
+                      onChange={(e) => setAllocationName(e.target.value)}
+                      className="px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Percentage (0-100)"
+                      value={allocationPercentage}
+                      onChange={(e) => setAllocationPercentage(e.target.value)}
+                      className="px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Destination Address"
+                      value={allocationDestination}
+                      onChange={(e) => setAllocationDestination(e.target.value)}
+                      className="px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={handleCreateAllocation}
+                      disabled={isLoadingAdmin}
+                      className="bg-[#FFD93D] hover:bg-[#FFC700] disabled:bg-gray-300 text-[#0C0C0C] px-4 py-2 rounded-lg font-bold transition-colors"
+                    >
+                      {isLoadingAdmin ? "..." : "Create"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* List Allocations */}
+                {isLoadingAdmin ? (
+                  <FaSpinner className="w-6 h-6 animate-spin text-blue-600" />
+                ) : allocations.length > 0 ? (
+                  <div className="space-y-2">
+                    {allocations.map((alloc) => (
+                      <div
+                        key={alloc.id}
+                        className="bg-white rounded-xl p-4 flex items-center justify-between"
+                      >
+                        <div className="flex-1">
+                          <div className="font-bold text-[#0C0C0C]">
+                            {alloc.name}
+                          </div>
+                          <div className="text-sm text-[#8E8E8E]">
+                            {alloc.percentage}% →{" "}
+                            {alloc.destination?.slice(0, 10)}...
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-[#8E8E8E]">
+                            Allocated
+                          </div>
+                          <div className="font-bold text-[#0C0C0C]">
+                            {alloc.allocated || 0} USDC
+                          </div>
+                        </div>
+                        <div
+                          className={`ml-4 px-3 py-1 rounded-full text-xs font-bold ${
+                            alloc.active
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {alloc.active ? "Active" : "Inactive"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-[#8E8E8E] py-4">
+                    No allocations yet. Create one above!
+                  </div>
+                )}
+              </div>
+
+              {/* Scheduled Distributions (Payroll) */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <FaCalendarAlt className="w-6 h-6 text-green-600" />
+                    <h2 className="text-2xl font-extrabold font-heading text-[#0C0C0C]">
+                      Scheduled Distributions
+                    </h2>
+                  </div>
+                  <button
+                    onClick={handleExecuteDistributions}
+                    disabled={isLoadingAdmin}
+                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors"
+                  >
+                    {isLoadingAdmin ? (
+                      <FaSpinner className="w-4 h-4 animate-spin" />
+                    ) : (
+                      "Execute Distributions"
+                    )}
+                  </button>
+                </div>
+
+                {/* Schedule Distribution Form */}
+                <div className="bg-white rounded-xl p-4 mb-4 space-y-3">
+                  <h3 className="font-bold text-[#0C0C0C]">
+                    Schedule New Distribution
+                  </h3>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Recipients (comma-separated addresses)"
+                      value={distRecipients}
+                      onChange={(e) => setDistRecipients(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-green-500 focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Amounts (comma-separated, e.g., 5,10,5)"
+                      value={distAmounts}
+                      onChange={(e) => setDistAmounts(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-green-500 focus:outline-none"
+                    />
+                    <div className="flex gap-3">
+                      <select
+                        value={distFrequency}
+                        onChange={(e) => setDistFrequency(e.target.value)}
+                        className="flex-1 px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-green-500 focus:outline-none"
+                      >
+                        <option value="60">Every 60 seconds (testing)</option>
+                        <option value="86400">Daily (24 hours)</option>
+                        <option value="604800">Weekly (7 days)</option>
+                        <option value="2592000">Monthly (30 days)</option>
+                      </select>
+                      <button
+                        onClick={handleScheduleDistribution}
+                        disabled={isLoadingAdmin}
+                        className="bg-[#FFD93D] hover:bg-[#FFC700] disabled:bg-gray-300 text-[#0C0C0C] px-6 py-2 rounded-lg font-bold transition-colors"
+                      >
+                        {isLoadingAdmin ? "..." : "Schedule"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* List Distributions */}
+                {isLoadingAdmin ? (
+                  <FaSpinner className="w-6 h-6 animate-spin text-green-600" />
+                ) : distributions.length > 0 ? (
+                  <div className="space-y-2">
+                    {distributions.map((dist) => (
+                      <div key={dist.id} className="bg-white rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="font-bold text-[#0C0C0C]">
+                            Distribution #{dist.id}
+                          </div>
+                          <div
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              dist.active
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {dist.active ? "Active" : "Inactive"}
+                          </div>
+                        </div>
+                        <div className="text-sm text-[#8E8E8E]">
+                          {dist.recipients?.length || 0} recipients • Total:{" "}
+                          {dist.amounts?.reduce(
+                            (a: number, b: number) => a + b,
+                            0
+                          ) || 0}{" "}
+                          USDC •
+                          {dist.daysUntilNext !== undefined
+                            ? ` Next in ${dist.daysUntilNext} days`
+                            : " Frequency: " + (dist.frequency || 0) + "s"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-[#8E8E8E] py-4">
+                    No distributions yet. Schedule one above!
+                  </div>
+                )}
               </div>
             </div>
           )}

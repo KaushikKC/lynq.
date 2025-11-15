@@ -175,25 +175,28 @@ export class UserController {
 
       const normalizedAddress = address.toLowerCase();
 
-      // Check if user already exists
-      let user = await User.findOne({ address: normalizedAddress });
+      // Use findOneAndUpdate to avoid version conflicts
+      const updateData: any = {};
+      if (verificationSBT) updateData.verificationSBT = verificationSBT;
+      if (verifiedMethods) updateData.verifiedMethods = verifiedMethods;
 
-      if (user) {
-        // Update user
-        if (verificationSBT) user.verificationSBT = verificationSBT;
-        if (verifiedMethods) user.verifiedMethods = verifiedMethods;
-        await user.save();
-      } else {
-        // Create new user
-        user = await User.create({
-          address: normalizedAddress,
-          verificationSBT,
-          verifiedMethods: verifiedMethods || [],
-          creditScore: 500,
-          referralCount: 0,
-          xp: 0,
-        });
-      }
+      const user = await User.findOneAndUpdate(
+        { address: normalizedAddress },
+        {
+          $set: updateData,
+          $setOnInsert: {
+            address: normalizedAddress,
+            creditScore: 500,
+            referralCount: 0,
+            xp: 0,
+          },
+        },
+        {
+          upsert: true, // Create if doesn't exist
+          new: true, // Return updated document
+          runValidators: true,
+        }
+      );
 
       res.json({
         success: true,
