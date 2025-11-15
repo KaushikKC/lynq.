@@ -25,7 +25,13 @@ export default function Header() {
 
   // Auto-switch to target chain when connected
   useEffect(() => {
-    if (authenticated && chainId && chainId !== targetChainId && switchChain && ready) {
+    if (
+      authenticated &&
+      chainId &&
+      chainId !== targetChainId &&
+      switchChain &&
+      ready
+    ) {
       // Automatically switch to chain 5042002 when connected
       switchChain({ chainId: targetChainId });
     }
@@ -68,26 +74,47 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-[#EDEDED]">
       <nav className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-12">
-          <Link href="/" className="text-2xl font-bold font-heading text-[#0C0C0C]">
+          <Link
+            href="/"
+            className="text-2xl font-bold font-heading text-[#0C0C0C]"
+          >
             lynq.
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link href="/" className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1">
+            <Link
+              href="/"
+              className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1"
+            >
               / Home /
             </Link>
-            <Link href="/dashboard" className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1">
+            <Link
+              href="/dashboard"
+              className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1"
+            >
               / Dashboard /
             </Link>
-            <Link href="/reputation" className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1">
+            <Link
+              href="/reputation"
+              className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1"
+            >
               / Reputation /
             </Link>
-            <Link href="/treasury" className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1">
+            <Link
+              href="/treasury"
+              className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1"
+            >
               / Treasury /
             </Link>
-            <Link href="/admin" className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1">
-              / Admin /
+            <Link
+              href="/governance"
+              className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1"
+            >
+              / Governance /
             </Link>
-            <Link href="/profile" className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1">
+            <Link
+              href="/profile"
+              className="text-[#0C0C0C] text-sm font-medium hover:text-[#FFC700] transition-colors flex items-center gap-1"
+            >
               / Profile /
             </Link>
           </div>
@@ -104,7 +131,7 @@ export default function Header() {
                   </span>
                 </div>
               )}
-              
+
               {/* Address Display */}
               <div className="flex items-center gap-2 bg-[#F6F6F6] px-4 py-2 rounded-full">
                 <span className="text-sm font-mono text-[#0C0C0C]">
@@ -155,4 +182,3 @@ export default function Header() {
     </header>
   );
 }
-

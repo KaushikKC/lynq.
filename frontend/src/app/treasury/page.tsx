@@ -141,6 +141,14 @@ export default function Treasury() {
     return `$${amount.toFixed(2)}`;
   };
 
+  // Format utilization rate as percentage with 1 decimal place
+  const formatUtilizationRate = (rate: number) => {
+    // Backend sends utilization as decimal (0-1), convert to percentage
+    // Handle edge cases: if rate is already > 1, it might already be a percentage
+    const percentage = rate > 1 ? rate : rate * 100;
+    return Math.max(0, Math.min(100, percentage)).toFixed(1);
+  };
+
   // Debug: Log formatted value
   useEffect(() => {
     console.log("💵 Formatted Total Liquidity:", formatAmount(totalLiquidity));
@@ -1147,12 +1155,17 @@ export default function Treasury() {
                   Utilization Rate
                 </div>
                 <div className="text-3xl font-extrabold font-heading text-[#0C0C0C]">
-                  {utilizationRate}%
+                  {formatUtilizationRate(utilizationRate)}%
                 </div>
                 <div className="w-full bg-[#EDEDED] rounded-full h-2 mt-2">
                   <div
                     className="bg-gradient-to-r from-[#FFD93D] to-[#FFC700] h-full rounded-full"
-                    style={{ width: `${utilizationRate}%` }}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.max(0, utilizationRate * 100)
+                      )}%`,
+                    }}
                   />
                 </div>
               </div>

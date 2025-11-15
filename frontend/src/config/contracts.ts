@@ -1,14 +1,14 @@
 // Deployed Contract Addresses on Arc Testnet
 export const CONTRACTS = {
-  VerificationSBT: "0x290d0662a9d7fb13a7470b68900fEFEC895cC6Ae",
-  AgentController: "0x92CB8A9a5a73bAbAB4d7AB05cB9c49B862F60cbB",
-  TreasuryPool: "0xe72d3Ba61852302670139648ee70E193c49085B2",
-  LoanEngine: "0x660D0bf91fCDd5dD4172c3e3D368198B277Ca679",
+  VerificationSBT: "0x503B21D6cd2e49F814a4fB620a6aAf3228043A8f",
+  AgentController: "0x405A688E1C05dB9dee85A695F008e6926859aC4c",
+  TreasuryPool: "0x4FdF07fEce136bf05c63Bd77FF8Fc9d6f04cF301",
+  LoanEngine: "0xEC4BEA60368f3aB46355CE1f1F0D2e67B2377022",
   TestUSDC: "0x3600000000000000000000000000000000000000",
   TestEURC: "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a", // Euro Coin for testing
   TestUSYC: "0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C", // Add your deployed USYC address here
-  MultiCurrencyManager: "0x3049EB4d4FdAf0B1b4e565e3C790535039256CC7",
-  GatewayManager: "0x4b92aD7fb2f98dF94E66C947005ee10142BB9b36",
+  MultiCurrencyManager: "0x9Ced052cAD68ae68CaE1A589edC8422608A0126e",
+  GatewayManager: "0x439153faf87CaBb9Ba5C7a5602028F242fd02E33",
 } as const;
 
 // Arc Testnet Configuration (matching your Privy setup)
