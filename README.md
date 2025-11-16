@@ -5,6 +5,7 @@ A decentralized lending platform built on Arc Network that demonstrates advanced
 ## Table of Contents
 
 - [Overview](#overview)
+- [Live Links](#live-links)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -27,6 +28,12 @@ Lynq is a comprehensive DeFi lending platform that showcases the power of progra
 2. **Treasury Management Track**: Implements a smart contract-based treasury system using Circle Gateway and Arc to automate allocations, distributions, and on-chain treasury operations.
 
 The platform enables organizations to manage their treasury through smart contracts, automating fund allocation, scheduled distributions, multi-signature approvals, and programmatic fund management based on rules and triggers.
+
+## Live Links
+
+- **Live Application**: [Add your live application URL here]
+- **Demo Video**: [Add your demo video URL here]
+- **Block Explorer**: [Arc Testnet Explorer](https://testnet.arcscan.app)
 
 ## Features
 
@@ -227,12 +234,12 @@ ARC_RPC_URL=https://rpc.testnet.arc.network
 CHAIN_ID=5042002
 
 # Contract Addresses
-VERIFICATION_SBT_ADDRESS=0x290d0662a9d7fb13a7470b68900fEFEC895cC6Ae
-AGENT_CONTROLLER_ADDRESS=0x92CB8A9a5a73bAbAB4d7AB05cB9c49B862F60cbB
-TREASURY_POOL_ADDRESS=0xe72d3Ba61852302670139648ee70E193c49085B2
-LOAN_ENGINE_ADDRESS=0x660D0bf91fCDd5dD4172c3e3D368198B277Ca679
-GATEWAY_MANAGER_ADDRESS=0x4b92aD7fb2f98dF94E66C947005ee10142BB9b36
-MULTI_CURRENCY_MANAGER_ADDRESS=0x3049EB4d4FdAf0B1b4e565e3C790535039256CC7
+VERIFICATION_SBT_ADDRESS=0x503B21D6cd2e49F814a4fB620a6aAf3228043A8f
+AGENT_CONTROLLER_ADDRESS=0x405A688E1C05DB9dee85A695F008e6926859aC4c
+TREASURY_POOL_ADDRESS=0x4FdF07fEce136bf05c63Bd77FF8Fc9d6f04cF301
+LOAN_ENGINE_ADDRESS=0xEC4BEA60368f3aB46355CE1f1F0D2e67B2377022
+GATEWAY_MANAGER_ADDRESS=0x439153faf87CaBb9Ba5C7a5602028F242fd02E33
+MULTI_CURRENCY_MANAGER_ADDRESS=0x9Ced052cAD68ae68CaE1A589edC8422608A0126e
 USDC_ADDRESS=0x3600000000000000000000000000000000000000
 EURC_ADDRESS=0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a
 
@@ -329,16 +336,17 @@ vercel deploy
 
 ### Deployed Contracts (Arc Testnet)
 
-| Contract | Address | Description |
-|----------|---------|-------------|
-| VerificationSBT | `0x290d0662a9d7fb13a7470b68900fEFEC895cC6Ae` | Soulbound token for identity verification |
-| AgentController | `0x92CB8A9a5a73bAbAB4d7AB05cB9c49B862F60cbB` | Role-based access control |
-| TreasuryPool | `0xe72d3Ba61852302670139648ee70E193c49085B2` | Liquidity pool with automated allocations |
-| LoanEngine | `0x660D0bf91fCDd5dD4172c3e3D368198B277Ca679` | Loan lifecycle management |
-| GatewayManager | `0x4b92aD7fb2f98dF94E66C947005ee10142BB9b36` | Circle Gateway integration |
-| MultiCurrencyManager | `0x3049EB4d4FdAf0B1b4e565e3C790535039256CC7` | Multi-currency support |
-| TestUSDC | `0x3600000000000000000000000000000000000000` | Test USDC token |
-| TestEURC | `0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a` | Test EURC token |
+| Contract | Address | Description | Explorer Link |
+|----------|---------|-------------|---------------|
+| VerificationSBT | `0x503B21D6cd2e49F814a4fB620a6aAf3228043A8f` | Soulbound token for identity verification | [View on Arcscan](https://testnet.arcscan.app/address/0x503B21D6cd2e49F814a4fB620a6aAf3228043A8f) |
+| AgentController | `0x405A688E1C05DB9dee85A695F008e6926859aC4c` | Role-based access control | [View on Arcscan](https://testnet.arcscan.app/address/0x405A688E1C05DB9dee85A695F008e6926859aC4c) |
+| TreasuryPool | `0x4FdF07fEce136bf05c63Bd77FF8Fc9d6f04cF301` | Liquidity pool with automated allocations | [View on Arcscan](https://testnet.arcscan.app/address/0x4FdF07fEce136bf05c63Bd77FF8Fc9d6f04cF301) |
+| LoanEngine | `0xEC4BEA60368f3aB46355CE1f1F0D2e67B2377022` | Loan lifecycle management | [View on Arcscan](https://testnet.arcscan.app/address/0xEC4BEA60368f3aB46355CE1f1F0D2e67B2377022) |
+| GatewayManager | `0x439153faf87CaBb9Ba5C7a5602028F242fd02E33` | Circle Gateway integration | [View on Arcscan](https://testnet.arcscan.app/address/0x439153faf87CaBb9Ba5C7a5602028F242fd02E33) |
+| MultiCurrencyManager | `0x9Ced052cAD68ae68CaE1A589edC8422608A0126e` | Multi-currency support | [View on Arcscan](https://testnet.arcscan.app/address/0x9Ced052cAD68ae68CaE1A589edC8422608A0126e) |
+| TestUSDC | `0x3600000000000000000000000000000000000000` | Test USDC token | [View on Arcscan](https://testnet.arcscan.app/address/0x3600000000000000000000000000000000000000) |
+| TestEURC | `0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a` | Test EURC token | [View on Arcscan](https://testnet.arcscan.app/address/0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a) |
+| TestUSYC | `0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C` | Test USYC token | [View on Arcscan](https://testnet.arcscan.app/address/0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C) |
 
 ### Key Functions
 
