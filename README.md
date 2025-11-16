@@ -31,8 +31,8 @@ The platform enables organizations to manage their treasury through smart contra
 
 ## Live Links
 
-- **Live Application**: [Add your live application URL here]
-- **Demo Video**: [Add your demo video URL here]
+- **Live Application**: https://lynq-arc.vercel.app/
+- **Demo Video**: https://youtu.be/USH-SCQFoGI
 - **Block Explorer**: [Arc Testnet Explorer](https://testnet.arcscan.app)
 
 ## Features
@@ -132,7 +132,7 @@ The platform enables organizations to manage their treasury through smart contra
 
 - **TestUSDC.sol**: Test USDC token for Arc testnet
 - **TestEURC.sol**: Test EURC token for Arc testnet
-- **TestMXN.sol**: Test MXN token for Arc testnet
+- **TestUSYC.sol**: Test USYC token for Arc testnet
 
 ## Tech Stack
 
